@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Vocabulary Trainer — Responsive (Quiz + Spelling + Random Mode)</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+  :root{ --bg1:#f6fbff; --bg2:#f1fff8; --card:#ffffff; --primary:#2563eb; --accent:#06b6d4; --muted:#6b7280; --success:#10b981; --danger:#ef4444; --radius:14px; }
+  *{box-sizing:border-box}
+  html { font-size: 16px; }
+  @media (max-width:600px){ html{font-size:15px} }
+  body{ margin:0; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial; background:linear-gradient(135deg,var(--bg1),var(--bg2)); color:#0f172a; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
+  .wrap{ max-width:1100px; margin:18px auto; padding:14px; }
+  header{ display:flex; gap:12px; align-items:center; margin-bottom:14px; }
+  .logo{ width:56px; height:56px; border-radius:12px; background:var(--primary); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; flex-shrink:0; }
+  .title { font-size:1.15rem; font-weight:700; line-height:1; }
+  .subtitle { font-size:0.88rem; color:var(--muted); margin-top:4px; }
+  .tabs{ margin-left:auto; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .tab{ padding:8px 12px; border-radius:10px; background:rgba(255,255,255,0.8); cursor:pointer; font-weight:600; border:1px solid rgba(2,6,23,0.04); }
+  .tab.active{ background: linear-gradient(90deg,var(--primary),#6475ff); color:white; box-shadow: 0 8px 26px rgba(79,70,229,0.12); }
+  .panel{ background:var(--card); border-radius:var(--radius); padding:14px; box-shadow:0 8px 26px rgba(2,6,23,0.06); margin-bottom:16px; }
+  .grid{ display:grid; gap:16px; grid-template-columns: 1fr 360px; align-items:start; }
+  @media (max-width:980px){ .grid{ grid-template-columns: 1fr; } .tabs{ margin-left:0; } }
+  .controls{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  input[type="text"], input[type="number"], select, textarea{ padding:10px 12px; border-radius:10px; border:1px solid #e6e9ef; font-size:0.98rem; width:100%; }
+  button{ padding:10px 12px; border-radius:10px; border:0; background:var(--primary); color:white; font-weight:700; cursor:pointer; }
+  button.ghost{ background:#fff; color:var(--primary); border:1px solid rgba(2,6,23,0.06); }
+  button.full{ width:100%; }
+  .list{ display:flex; flex-direction:column; gap:10px; max-height:520px; overflow:auto; padding-right:6px; }
+  .item{ display:flex; justify-content:space-between; gap:12px; align-items:center; padding:10px; border-radius:10px; border:1px solid #f1f4ff; background:#fff; }
+  .left { display:flex; gap:12px; align-items:center; }
+  .badge{ min-width:44px; text-align:center; padding:8px 10px; border-radius:10px; background:#f8fafc; color:var(--muted); font-weight:700; }
+  .word{ font-weight:700; font-size:1rem; }
+  .trans{ color:var(--muted); font-size:0.95rem; }
+  .flash { padding:16px; border-radius:12px; background:#fff; display:flex; flex-direction:column; align-items:center; gap:10px; box-shadow:0 12px 40px rgba(2,6,23,0.06); }
+  .flash .wordLarge { font-size:1.6rem; font-weight:800; text-align:center; }
+  .flash .transLarge { color:var(--muted); font-size:1rem; }
+  .options{ display:flex; flex-direction:column; gap:10px; width:100%; max-width:640px; }
+  .option{ padding:12px; border-radius:10px; background:#fff; border:1px solid #eef2ff; font-weight:700; cursor:pointer; display:flex; justify-content:space-between; align-items:center; }
+  .option.correct{ border-color:var(--success); background:linear-gradient(90deg, rgba(16,185,129,0.06), #fff); }
+  .option.wrong{ border-color:var(--danger); background:linear-gradient(90deg, rgba(239,68,68,0.06), #fff); }
+  .progress { width:100%; max-width:560px; height:12px; background:#eef2f8; border-radius:999px; overflow:hidden; }
+  .progress > i{ display:block; height:100%; width:0%; background:linear-gradient(90deg,var(--accent),#6475ff); }
+  .statsRow{ display:flex; gap:10px; flex-wrap:wrap; }
+  .stat{ background:#fff; padding:10px; border-radius:10px; min-width:120px; box-shadow:0 8px 24px rgba(2,6,23,0.04); }
+  .blanks{ display:flex; gap:6px; justify-content:center; flex-wrap:wrap; margin:6px 0; }
+  .blank{ min-width:28px; padding:8px 10px; border-radius:8px; border:1px dashed #e6e9ef; font-weight:700; text-align:center; }
+  .answerRow{ display:flex; gap:8px; align-items:center; margin-top:8px; }
+  .currentMode{ font-weight:700; color:var(--muted); margin-top:6px }
+  @media (max-width:600px){ .tab{ padding:10px 14px; font-size:0.95rem; } button{ padding:12px 14px; font-size:1rem; border-radius:12px; } .flash .wordLarge{ font-size:1.35rem; } .option{ padding:14px; font-size:1rem; } }
+  footer{ text-align:center; color:var(--muted); font-size:0.9rem; margin-top:12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">VT</div>
+    <div>
+      <div class="title">Vocabulary Trainer — Responsive</div>
+      <div class="subtitle">รองรับมือถือ/เดสก์ท็อป • EN TTS • CSV UTF-8 • localStorage</div>
+    </div>
+
+    <nav class="tabs" id="tabs" aria-label="Main tabs">
+      <div class="tab active" data-tab="library">Library</div>
+      <div class="tab" data-tab="io">Import/Export</div>
+      <div class="tab" data-tab="practice">Practice</div>
+      <div class="tab" data-tab="quiz">Quiz</div>
+      <div class="tab" data-tab="stats">Stats</div>
+    </nav>
+  </header>
+
+  <!-- LIBRARY -->
+  <section class="panel" id="panel-library">
+    <div class="grid">
+      <div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+          <input id="inputWord" type="text" placeholder="Word (EN)" style="flex:1;min-width:140px">
+          <input id="inputTrans" type="text" placeholder="Translation (TH)" style="flex:1;min-width:140px">
+          <button onclick="addWord()" aria-label="Add word">Add</button>
+        </div>
+
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+          <input id="search" placeholder="ค้นหา..." oninput="renderLibrary()" style="flex:1">
+          <select id="filter" onchange="renderLibrary()" style="width:140px">
+            <option value="all">All</option>
+            <option value="weak">Weak</option>
+            <option value="mastered">Mastered</option>
+          </select>
+          <button class="ghost" onclick="renderLibrary()">Refresh</button>
+        </div>
+
+        <div class="list" id="list"></div>
+      </div>
+
+      <aside>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div class="stat"><div class="small">Total</div><div id="statTotal" style="font-weight:700;font-size:1.1rem">0</div></div>
+          <div class="stat"><div class="small">Mastered (>=3)</div><div id="statMaster" style="font-weight:700;font-size:1.1rem">0</div></div>
+          <div class="stat"><div class="small">Weak (>=2)</div><div id="statWeak" style="font-weight:700;font-size:1.1rem">0</div></div>
+
+          <div style="display:flex;gap:8px">
+            <button class="ghost" onclick="exportCSV()">Export CSV</button>
+            <button onclick="clearAll()">Clear</button>
+          </div>
+
+          <div style="margin-top:6px">
+            <div class="small">Sample CSV (UTF-8)</div>
+            <div style="display:flex;gap:8px;margin-top:6px">
+              <button class="ghost" onclick="downloadSample()">Download</button>
+              <input id="fileIn" type="file" accept=".csv" onchange="handleImportFile(event)">
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- IO -->
+  <section class="panel" id="panel-io" style="display:none">
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <div style="flex:1;min-width:260px">
+        <div style="font-weight:700">Import CSV</div>
+        <div class="small">Header: <code>Word,Translation</code> (UTF-8 recommended)</div>
+        <input id="fileIn2" type="file" accept=".csv" onchange="handleImportFile(event)">
+        <div style="margin-top:10px">
+          <textarea id="pasteCsv" rows="8" placeholder="วาง CSV ที่นี่ (มี header)"></textarea>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button onclick="importFromPaste()">Import from paste</button>
+            <button class="ghost" onclick="autoFixPaste()">Try auto-fix encoding</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="min-width:260px">
+        <div style="font-weight:700">Export</div>
+        <div class="small">Export เป็น UTF-8 + BOM (Excel friendly)</div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button onclick="exportCSV()">Export CSV</button>
+          <button class="ghost" onclick="copyCSV()">Copy CSV</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRACTICE -->
+  <section class="panel" id="panel-practice" style="display:none">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+      <div><strong>Practice</strong></div>
+      <input id="pStart" type="number" placeholder="start (1)" style="width:110px">
+      <input id="pEnd" type="number" placeholder="end" style="width:110px">
+      <button onclick="startPractice()">Start</button>
+      <button class="ghost" onclick="shufflePractice()">Shuffle</button>
+      <button class="ghost" onclick="stopPractice()">Stop</button>
+    </div>
+
+    <div style="display:flex;gap:16px;flex-wrap:wrap">
+      <div style="flex:1">
+        <div id="practiceCard" class="flash" style="display:none">
+          <div class="wordLarge" id="pWord">Word</div>
+          <div class="transLarge" id="pTrans" style="display:none">Translation</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button onclick="playEN('practice')">🔊 EN</button>
+            <button class="ghost" onclick="revealPractice()">Show</button>
+            <button onclick="markKnown()">✅ Known</button>
+            <button onclick="markWrong()">❌ Wrong</button>
+            <button class="ghost" onclick="nextPractice()">Next</button>
+          </div>
+          <div style="height:8px"></div>
+          <div class="progress"><i id="pProgress"></i></div>
+        </div>
+      </div>
+
+      <div style="min-width:220px">
+        <div class="small">Queue: <span id="pCount">0</span></div>
+        <div class="small">Index: <span id="pIndex">0</span></div>
+        <div style="height:12px"></div>
+        <div style="display:flex;gap:8px">
+          <button onclick="practiceWeak()">Practice Weak</button>
+          <button class="ghost" onclick="exportCSV()">Export</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- QUIZ -->
+  <section class="panel" id="panel-quiz" style="display:none">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+      <div><strong>Quiz (Multiple choice / Spelling / Random)</strong></div>
+      <input id="qStart" type="number" placeholder="start (1)" style="width:110px">
+      <input id="qEnd" type="number" placeholder="end" style="width:110px">
+      <label style="display:flex;align-items:center;gap:6px">Mode:
+        <select id="qMode" style="margin-left:6px">
+          <option value="multiple">EN → TH (Multiple choice)</option>
+          <option value="reverse">TH → EN (Reverse multiple choice)</option>
+          <option value="spelling">Spelling (เติมสะกดคำเป็น EN)</option>
+        </select>
+      </label>
+      <label style="display:flex;align-items:center;gap:6px"><input id="randomMode" type="checkbox"> Randomize per question</label>
+      <button onclick="startQuiz()">Start Quiz</button>
+      <label style="display:flex;align-items:center;gap:6px"><input id="autoNext" type="checkbox" checked> Auto next</label>
+    </div>
+
+    <div style="display:flex;gap:16px;flex-wrap:wrap">
+      <div style="flex:1">
+        <div id="quizCard" class="flash" style="display:none;min-height:160px">
+          <div class="wordLarge" id="qWord">Word</div>
+          <div class="currentMode" id="qCurrentMode"></div>
+          <div style="display:flex;gap:8px;margin-bottom:8px"><button onclick="playEN('quiz')">🔊 EN</button></div>
+          <div class="options" id="qOptions"></div>
+          <div id="spellingArea" style="display:none;width:100%;max-width:640px;text-align:center">
+            <div class="transLarge" id="qHint"></div>
+            <div class="blanks" id="qBlanks"></div>
+            <div class="answerRow">
+              <input id="spellingInput" placeholder="พิมพ์คำศัพท์ (EN)" style="flex:1;min-width:160px">
+              <button onclick="submitSpelling()">Submit</button>
+              <button class="ghost" onclick="revealSpelling()">Reveal</button>
+            </div>
+            <div id="spellingFeedback" class="small" style="margin-top:6px;color:var(--muted)"></div>
+          </div>
+          <div style="height:8px"></div>
+          <div class="progress"><i id="qProgress"></i></div>
+        </div>
+      </div>
+
+      <div style="min-width:260px">
+        <div class="stat"><div class="small">Score</div><div id="qScore" style="font-weight:700">0 / 0</div></div>
+        <div style="height:12px"></div>
+        <div class="small">Wrong this session</div>
+        <div id="sessionWrong" style="max-height:260px;overflow:auto;color:var(--muted)"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STATS -->
+  <section class="panel" id="panel-stats" style="display:none">
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <div style="flex:1;min-width:260px">
+        <h3 style="margin:0 0 8px 0">Weak words</h3>
+        <div id="weakList"></div>
+      </div>
+      <div style="min-width:260px">
+        <div style="font-weight:700">Details</div>
+        <div style="margin-top:8px">
+          <div>Total: <b id="dTotal">0</b></div>
+          <div>Mastered: <b id="dMaster">0</b></div>
+          <div>Weak: <b id="dWeak">0</b></div>
+          <div style="height:10px"></div>
+          <div style="display:flex;gap:8px"><button onclick="practiceWeak()">Practice Weak</button><button class="ghost" onclick="resetStats()">Reset Stats</button></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>เก็บข้อมูลในเครื่อง (localStorage) • รองรับมือถือและเดสก์ท็อป • Export เป็น UTF-8 + BOM</footer>
+</div>
+
+<script>
+/* ------------------------------
+  Data model & storage
+-------------------------------*/
+const STORAGE_KEY = 'vocab_responsive_v1';
+let vocab = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+function saveAll(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(vocab)); updateStatsUI(); }
+function loadAll(){ vocab = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
+
+/* ------------------------------
+  Tab handling
+-------------------------------*/
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    const tab = t.dataset.tab;
+    document.querySelectorAll('[id^="panel-"]').forEach(p=>p.style.display='none');
+    document.getElementById('panel-' + tab).style.display = 'block';
+    refreshUI();
+  });
+});
+
+/* ------------------------------
+  Library functions
+-------------------------------*/
+function renderLibrary(){
+  const list = document.getElementById('list'); list.innerHTML = '';
+  const q = (document.getElementById('search').value || '').toLowerCase();
+  const filter = document.getElementById('filter').value;
+  let items = vocab.map((it,i)=>({...it, idx:i}));
+  if(filter === 'weak') items = items.filter(i=> (i.wrong||0) >= 2);
+  if(filter === 'mastered') items = items.filter(i=> (i.correct||0) >= 3);
+  if(q) items = items.filter(i => (i.word + ' ' + i.translation).toLowerCase().includes(q));
+  if(!items.length){ list.innerHTML = '<div class="small">ไม่มีคำศัพท์</div>'; return; }
+  items.forEach(it=>{
+    const el = document.createElement('div'); el.className = 'item';
+    el.innerHTML = `<div class="left"><div class="badge">${it.idx+1}</div><div><div class="word">${escapeHtml(it.word)}</div><div class="trans">${escapeHtml(it.translation)}</div><div class="small">✅ ${it.correct||0} ❌ ${it.wrong||0}</div></div></div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="ghost" onclick="playENIndex(${it.idx})">🔊</button>
+        <button onclick="editItem(${it.idx})">✏️</button>
+        <button style="background:var(--danger);color:#fff;border-radius:8px;padding:8px 10px" onclick="deleteItem(${it.idx})">🗑</button>
+      </div>`;
+    list.appendChild(el);
+  });
+}
+function addWord(){
+  const w = document.getElementById('inputWord').value.trim();
+  const t = document.getElementById('inputTrans').value.trim();
+  if(!w || !t) return alert('กรุณากรอก Word และ Translation');
+  vocab.push({word:w, translation:t, correct:0, wrong:0, lastSeen: Date.now()});
+  document.getElementById('inputWord').value=''; document.getElementById('inputTrans').value='';
+  saveAll(); renderLibrary();
+}
+function editItem(i){
+  const it = vocab[i];
+  const nw = prompt('แก้คำศัพท์', it.word); if(nw===null) return;
+  const nt = prompt('แก้คำแปล', it.translation); if(nt===null) return;
+  it.word = nw.trim(); it.translation = nt.trim(); it.lastSeen = Date.now(); saveAll(); renderLibrary();
+}
+function deleteItem(i){ if(!confirm('ลบคำศัพท์?')) return; vocab.splice(i,1); saveAll(); renderLibrary(); }
+function clearAll(){ if(!confirm('ล้างทั้งหมด?')) return; vocab = []; saveAll(); renderLibrary(); }
+
+/* ------------------------------
+  Import / Export CSV
+-------------------------------*/
+function handleImportFile(e){
+  const f = e.target.files[0]; if(!f) return;
+  Papa.parse(f, { header:true, skipEmptyLines:true, complete(results){
+    const rows = results.data; const items=[];
+    for(const r of rows){
+      const W = r.Word ?? r.word ?? Object.values(r)[0];
+      const T = r.Translation ?? r.translation ?? Object.values(r)[1];
+      if(!W || !T) continue;
+      items.push({word:String(W).trim(), translation:String(T).trim(), correct:0, wrong:0, lastSeen: Date.now()});
+    }
+    if(!items.length) return alert('ไม่พบคำในไฟล์');
+    vocab = items; saveAll(); alert('นำเข้าเรียบร้อย: ' + items.length + ' คำ'); renderLibrary();
+  }, error(err){ alert('Import failed: '+err.message); }});
+}
+function importFromPaste(){
+  const txt = document.getElementById('pasteCsv').value.trim(); if(!txt) return alert('วาง CSV ก่อน');
+  const parsed = Papa.parse(txt, { header:true, skipEmptyLines:true }); const rows = parsed.data; const items=[];
+  for(const r of rows){
+    const W = r.Word ?? r.word ?? Object.values(r)[0];
+    const T = r.Translation ?? r.translation ?? Object.values(r)[1];
+    if(!W || !T) continue;
+    items.push({word:String(W).trim(), translation:String(T).trim(), correct:0, wrong:0, lastSeen: Date.now()});
+  }
+  if(!items.length) return alert('ไม่พบคำในข้อมูลที่วาง');
+  vocab = items; saveAll(); alert('นำเข้าเรียบร้อย: ' + items.length + ' คำ'); renderLibrary();
+}
+function autoFixPaste(){
+  const txt = document.getElementById('pasteCsv').value;
+  if(!txt) return alert('วางข้อความก่อน');
+  try{
+    if(/%[0-9A-F]{2}/i.test(txt)){ document.getElementById('pasteCsv').value = decodeURIComponent(txt); alert('decodeURIComponent applied'); return; }
+    document.getElementById('pasteCsv').value = decodeURIComponent(escape(txt)); alert('attempted latin1->utf8 conversion');
+  }catch(e){ alert('ไม่สามารถแปลงอัตโนมัติได้'); }
+}
+function exportCSV(){
+  if(!vocab.length) return alert('ไม่มีคำศัพท์');
+  const rows = vocab.map(i=>({Word:i.word, Translation:i.translation}));
+  const csv = Papa.unparse(rows);
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'vocabulary.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+}
+async function copyCSV(){
+  if(!vocab.length) return alert('ไม่มีคำศัพท์');
+  const rows = vocab.map(i=>({Word:i.word, Translation:i.translation}));
+  const csv = Papa.unparse(rows);
+  try{ await navigator.clipboard.writeText(csv); alert('คัดลอกเรียบร้อย'); } catch(e){ alert('คัดลอกล้มเหลว'); }
+}
+function downloadSample(){
+  const sample = `Word,Translation
+apple,แอปเปิ้ล
+banana,กล้วย
+cat,แมว
+dog,สุนัข
+elephant,ช้าง
+fish,ปลา
+grape,องุ่น
+house,บ้าน
+ice,น้ำแข็ง
+juice,น้ำผลไม้
+kite,ว่าว
+lion,สิงโต
+monkey,ลิง
+notebook,สมุด
+orange,ส้ม
+pen,ปากกา
+queen,ราชินี
+rabbit,กระต่าย
+sun,ดวงอาทิตย์
+tree,ต้นไม้
+umbrella,ร่ม
+violet,ม่วง
+water,น้ำ
+xylophone,ไซโลโฟน
+yellow,สีเหลือง
+zebra,ม้าลาย
+car,รถยนต์
+book,หนังสือ
+chair,เก้าอี้
+table,โต๊ะ`;
+  const blob = new Blob(['﻿' + sample], { type:'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'vocab-sample-30.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+}
+
+/* ------------------------------
+  Practice (flashcards)
+-------------------------------*/
+let practiceQueue = [], practiceIndex = 0;
+function startPractice(){
+  if(!vocab.length) return alert('ไม่มีคำศัพท์');
+  const s = parseInt(document.getElementById('pStart').value) || 1;
+  const e = parseInt(document.getElementById('pEnd').value) || vocab.length;
+  const start = Math.max(1, s) - 1, end = Math.min(vocab.length, e);
+  if(start >= end) return alert('ช่วงคำไม่ถูกต้อง');
+  practiceQueue = [];
+  for(let i = start; i < end; i++) practiceQueue.push(i);
+  practiceIndex = 0;
+  document.getElementById('practiceCard').style.display = 'flex';
+  showPracticeCard();
+}
+function showPracticeCard(){
+  if(!practiceQueue.length) return;
+  if(practiceIndex >= practiceQueue.length) practiceIndex = 0;
+  const idx = practiceQueue[practiceIndex];
+  const it = vocab[idx];
+  document.getElementById('pWord').textContent = it.word;
+  document.getElementById('pTrans').textContent = it.translation;
+  document.getElementById('pTrans').style.display = 'none';
+  document.getElementById('practiceCard').dataset.idx = idx;
+  document.getElementById('pCount').textContent = practiceQueue.length;
+  document.getElementById('pIndex').textContent = (practiceIndex + 1) + ' / ' + practiceQueue.length;
+  const pct = Math.round(((practiceIndex + 1) / practiceQueue.length) * 100);
+  document.getElementById('pProgress').style.width = pct + '%';
+}
+function revealPractice(){ document.getElementById('pTrans').style.display = 'block'; }
+function nextPractice(){ practiceIndex++; if(practiceIndex >= practiceQueue.length) practiceIndex = 0; showPracticeCard(); }
+function shufflePractice(){ for(let i = practiceQueue.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [practiceQueue[i], practiceQueue[j]] = [practiceQueue[j], practiceQueue[i]] } practiceIndex = 0; showPracticeCard(); }
+function markKnown(){ const idx = parseInt(document.getElementById('practiceCard').dataset.idx || -1); if(idx < 0) return; vocab[idx].correct = (vocab[idx].correct || 0) + 1; vocab[idx].lastSeen = Date.now(); saveAll(); nextPractice(); }
+function markWrong(){ const idx = parseInt(document.getElementById('practiceCard').dataset.idx || -1); if(idx < 0) return; vocab[idx].wrong = (vocab[idx].wrong || 0) + 1; vocab[idx].lastSeen = Date.now(); saveAll(); nextPractice(); }
+function stopPractice(){ document.getElementById('practiceCard').style.display = 'none'; }
+function practiceWeak(){ const weak = vocab.map((it,i)=>({it,i})).filter(x=> (x.it.wrong||0) >= 2).map(x=>x.i); if(!weak.length) return alert('ไม่มีคำที่ผิดบ่อย'); practiceQueue = weak; practiceIndex = 0; document.getElementById('practiceCard').style.display = 'flex'; showPracticeCard(); }
+
+/* ------------------------------
+  Quiz (multiple choice + spelling + reverse + random per question)
+-------------------------------*/
+let quizQueue = [], quizScore = 0, quizTotal = 0, quizCurrent = null, sessionWrong = [], quizRandomize = false;
+function startQuiz(){
+  if(!vocab.length) return alert('ไม่มีคำศัพท์');
+  const s = parseInt(document.getElementById('qStart').value) || 1;
+  const e = parseInt(document.getElementById('qEnd').value) || vocab.length;
+  const start = Math.max(1, s) - 1, end = Math.min(vocab.length, e);
+  if(start >= end) return alert('ช่วงคำไม่ถูกต้อง');
+  quizRandomize = document.getElementById('randomMode').checked;
+  const fixedMode = document.getElementById('qMode').value;
+  quizQueue = [];
+  for(let i = start; i < end; i++) quizQueue.push(i);
+  shuffleArray(quizQueue);
+  quizTotal = quizQueue.length; quizScore = 0; sessionWrong = [];
+  document.getElementById('qScore').textContent = `${quizScore} / ${quizTotal}`;
+  document.getElementById('quizCard').style.display = 'flex';
+  // hide spelling area initially
+  document.getElementById('spellingArea').style.display = 'none';
+  // start the first question; if randomize, mode set per question inside showNextQuiz
+  showNextQuiz(quizRandomize ? null : fixedMode);
+}
+
+function showNextQuiz(mode){
+  if(!quizQueue.length){
+    alert(`จบแบบทดสอบ! คะแนน: ${quizScore} / ${quizTotal}`);
+    renderSessionWrong(); return;
+  }
+  const idx = quizQueue.pop();
+  const it = vocab[idx];
+  // decide mode: if quizRandomize true, pick randomly for this question; otherwise use provided mode
+  let chosenMode = mode;
+  if(quizRandomize || !chosenMode){
+    const modes = ['multiple','reverse','spelling'];
+    chosenMode = modes[Math.floor(Math.random()*modes.length)];
+  }
+  quizCurrent = { idx, item: it, mode: chosenMode };
+  // show current mode to user
+  const modeLabel = chosenMode === 'multiple' ? 'EN → TH' : chosenMode === 'reverse' ? 'TH → EN' : 'Spelling (EN)';
+  document.getElementById('qCurrentMode').textContent = `Mode: ${modeLabel}`;
+
+  if(chosenMode === 'spelling'){
+    renderSpelling(quizCurrent);
+  } else if(chosenMode === 'reverse'){
+    // TH -> choose English
+    const options = [it.word];
+    const pool = vocab.map(v=>v.word).filter(w=> w !== it.word);
+    shuffleArray(pool);
+    for(let i=0;i<pool.length && options.length<4;i++){ if(!options.includes(pool[i])) options.push(pool[i]); }
+    while(options.length<4) options.push('(no option)'); shuffleArray(options);
+    quizCurrent.options = options;
+    renderReverse(quizCurrent);
+  } else {
+    // default multiple choice EN -> TH
+    const options = [it.translation];
+    const pool = vocab.map(v=>v.translation).filter(t=> t !== it.translation);
+    shuffleArray(pool);
+    for(let i=0;i<pool.length && options.length<4;i++){ if(!options.includes(pool[i])) options.push(pool[i]); }
+    while(options.length<4) options.push('(no option)'); shuffleArray(options);
+    quizCurrent.options = options;
+    renderQuiz(quizCurrent);
+  }
+}
+
+function renderQuiz(q){
+  // EN -> TH multiple choice
+  document.getElementById('qWord').textContent = q.item.word;
+  document.getElementById('qHint').textContent = '';
+  document.getElementById('spellingArea').style.display = 'none';
+  const optsEl = document.getElementById('qOptions'); optsEl.innerHTML = '';
+  q.options.forEach(opt=>{
+    const d = document.createElement('div'); d.className = 'option'; d.textContent = opt;
+    d.onclick = ()=> evaluateQuiz(opt, q.item.translation, q.idx, d);
+    optsEl.appendChild(d);
+  });
+  const done = quizTotal - quizQueue.length; const pct = Math.round((done/quizTotal)*100);
+  document.getElementById('qProgress').style.width = pct + '%';
+}
+
+function renderReverse(q){
+  // TH -> EN multiple choice
+  document.getElementById('qWord').textContent = q.item.translation; // show thai
+  document.getElementById('spellingArea').style.display = 'none';
+  const optsEl = document.getElementById('qOptions'); optsEl.innerHTML = '';
+  q.options.forEach(opt=>{
+    const d = document.createElement('div'); d.className = 'option'; d.textContent = opt;
+    d.onclick = ()=> evaluateQuiz(opt, q.item.word, q.idx, d);
+    optsEl.appendChild(d);
+  });
+  const done = quizTotal - quizQueue.length; const pct = Math.round((done/quizTotal)*100);
+  document.getElementById('qProgress').style.width = pct + '%';
+}
+
+function renderSpelling(q){
+  // show thai translation as hint and blanks for english word
+  document.getElementById('qWord').textContent = '';
+  document.getElementById('qHint').textContent = q.item.translation;
+  document.getElementById('qBlanks').innerHTML = '';
+  document.getElementById('spellingInput').value = '';
+  document.getElementById('spellingFeedback').textContent = '';
+  document.getElementById('spellingArea').style.display = 'block';
+  document.getElementById('qOptions').innerHTML = '';
+  const word = q.item.word;
+  // show blanks with a few letters revealed randomly (at most 2 revealed)
+  const revealCount = Math.min(2, Math.floor(word.length/4));
+  const revealPositions = new Set();
+  while(revealPositions.size < revealCount){ revealPositions.add(Math.floor(Math.random()*word.length)); }
+  for(let i=0;i<word.length;i++){
+    const ch = word[i];
+    const span = document.createElement('div'); span.className='blank';
+    span.textContent = revealPositions.has(i) ? ch : '_';
+    document.getElementById('qBlanks').appendChild(span);
+  }
+  const done = quizTotal - quizQueue.length; const pct = Math.round((done/quizTotal)*100);
+  document.getElementById('qProgress').style.width = pct + '%';
+  // focus input
+  setTimeout(()=> document.getElementById('spellingInput').focus(), 60);
+}
+
+function submitSpelling(){
+  if(!quizCurrent) return;
+  const input = document.getElementById('spellingInput').value.trim();
+  const correct = quizCurrent.item.word;
+  evaluateSpelling(input, correct, quizCurrent.idx);
+}
+
+function revealSpelling(){
+  if(!quizCurrent) return;
+  document.getElementById('spellingFeedback').textContent = `เฉลย: ${quizCurrent.item.word}`;
+  vocab[quizCurrent.idx].wrong = (vocab[quizCurrent.idx].wrong||0) + 1;
+  vocab[quizCurrent.idx].lastSeen = Date.now(); saveAll();
+  sessionWrong.push({ idx: quizCurrent.idx, word: vocab[quizCurrent.idx].word, correct: vocab[quizCurrent.idx].translation });
+  updateSessionWrong();
+  const auto = document.getElementById('autoNext').checked;
+  if(auto) setTimeout(()=> showNextQuiz(null), 900);
+}
+
+function evaluateSpelling(input, correct, idx){
+  document.getElementById('spellingInput').disabled = true;
+  const auto = document.getElementById('autoNext').checked;
+  if(input.toLowerCase() === correct.toLowerCase()){
+    document.getElementById('spellingFeedback').textContent = 'ถูกต้อง!';
+    vocab[idx].correct = (vocab[idx].correct||0) + 1; quizScore++;
+  } else {
+    document.getElementById('spellingFeedback').textContent = `ผิด — เฉลย: ${correct}`;
+    vocab[idx].wrong = (vocab[idx].wrong||0) + 1;
+    sessionWrong.push({ idx, word: vocab[idx].word, correct: vocab[idx].translation });
+  }
+  vocab[idx].lastSeen = Date.now(); saveAll();
+  document.getElementById('qScore').textContent = `${quizScore} / ${quizTotal}`;
+  updateSessionWrong();
+  if(auto){ setTimeout(()=> { document.getElementById('spellingInput').disabled = false; showNextQuiz(null); }, 900); }
+  else { setTimeout(()=> { document.getElementById('spellingInput').disabled = false; }, 250); }
+}
+
+function evaluateQuiz(selected, correct, idx, el){
+  document.querySelectorAll('#qOptions .option').forEach(o=>o.onclick = null);
+  const auto = document.getElementById('autoNext').checked;
+  if(selected === correct){
+    el.classList.add('correct'); quizScore++; vocab[idx].correct = (vocab[idx].correct || 0) + 1;
+  } else {
+    el.classList.add('wrong'); vocab[idx].wrong = (vocab[idx].wrong || 0) + 1;
+    // show correct
+    document.querySelectorAll('#qOptions .option').forEach(o=>{ if(o.textContent === correct) o.classList.add('correct'); });
+    sessionWrong.push({ idx, word: vocab[idx].word, correct: vocab[idx].translation });
+  }
+  vocab[idx].lastSeen = Date.now(); saveAll();
+  document.getElementById('qScore').textContent = `${quizScore} / ${quizTotal}`;
+  updateSessionWrong();
+  if(auto){ setTimeout(()=> showNextQuiz(null), 700); }
+  else {
+    const nextBtn = document.createElement('button'); nextBtn.textContent = 'Next'; nextBtn.onclick = ()=> { nextBtn.remove(); showNextQuiz(null); };
+    document.getElementById('qOptions').appendChild(nextBtn);
+  }
+}
+
+function updateSessionWrong(){
+  const el = document.getElementById('sessionWrong'); el.innerHTML = '';
+  sessionWrong.forEach(w=>{
+    const d = document.createElement('div'); d.textContent = `${w.word} → ${w.correct}`; el.appendChild(d);
+  });
+}
+function renderSessionWrong(){ updateSessionWrong(); }
+
+function retryWrong(){
+  const wrongIdx = vocab.map((it,i)=>({it,i})).filter(x=> (x.it.wrong||0) >= 1).map(x=>x.i);
+  if(!wrongIdx.length) return alert('ไม่มีคำที่ผิดบ่อย');
+  quizQueue = [...wrongIdx]; shuffleArray(quizQueue);
+  quizTotal = quizQueue.length; quizScore = 0; sessionWrong = [];
+  document.getElementById('qScore').textContent = `${quizScore} / ${quizTotal}`;
+  document.getElementById('quizCard').style.display = 'flex';
+  showNextQuiz(document.getElementById('qMode').value);
+}
+
+/* ------------------------------
+  Audio (EN TTS only)
+-------------------------------*/
+let enVoice = null;
+function initVoices(){
+  const voices = speechSynthesis.getVoices();
+  enVoice = voices.find(v => v.lang && v.lang.startsWith('en')) || null;
+}
+speechSynthesis.onvoiceschanged = initVoices;
+initVoices();
+
+function playEN(mode){
+  let text = null;
+  if(mode === 'practice'){
+    const idx = parseInt(document.getElementById('practiceCard').dataset.idx || -1);
+    if(idx >= 0) text = vocab[idx].word;
+  } else if(mode === 'quiz'){
+    if(quizCurrent && quizCurrent.item) text = quizCurrent.item.word;
+  } else if(typeof mode === 'number'){
+    text = vocab[mode].word;
+  }
+  if(!text) return;
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'en-US';
+  if(enVoice) u.voice = enVoice;
+  speechSynthesis.speak(u);
+}
+function playENIndex(i){ playEN(i); }
+
+/* ------------------------------
+  Stats & helpers
+-------------------------------*/
+function updateStatsUI(){
+  document.getElementById('statTotal').textContent = vocab.length;
+  document.getElementById('statMaster').textContent = vocab.filter(i=> (i.correct||0) >= 3).length;
+  document.getElementById('statWeak').textContent = vocab.filter(i=> (i.wrong||0) >= 2).length;
+  document.getElementById('dTotal').textContent = vocab.length;
+  document.getElementById('dMaster').textContent = vocab.filter(i=> (i.correct||0) >= 3).length;
+  document.getElementById('dWeak').textContent = vocab.filter(i=> (i.wrong||0) >= 2).length;
+  renderWeakList();
+}
+function renderWeakList(){
+  const el = document.getElementById('weakList'); el.innerHTML = '';
+  const weak = vocab.map((it,i)=>({...it,i})).filter(x=> (x.wrong||0) >= 2).sort((a,b)=> (b.wrong||0) - (a.wrong||0));
+  weak.forEach(w=>{
+    const div = document.createElement('div'); div.className = 'item';
+    div.innerHTML = `<div class="left"><div class="badge">${w.i+1}</div><div><div class="word">${escapeHtml(w.word)}</div><div class="trans">${escapeHtml(w.translation)}</div><div class="small">Wrong: ${w.wrong||0}</div></div></div>
+      <div style="display:flex;gap:8px"><button onclick="practiceSingle(${w.i})">Practice</button><button class="ghost" onclick="editItem(${w.i})">Edit</button></div>`;
+    el.appendChild(div);
+  });
+}
+function practiceSingle(i){ practiceQueue = [i]; practiceIndex = 0; document.getElementById('practiceCard').style.display = 'flex'; showPracticeCard(); }
+function resetStats(){ if(!confirm('Reset stats?')) return; vocab.forEach(i=>{ i.correct=0; i.wrong=0; }); saveAll(); updateStatsUI(); alert('Reset done'); }
+function shuffleArray(a){ for(let i=a.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } }
+function escapeHtml(s){ return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
+
+/* ------------------------------
+  Init / UI helpers
+-------------------------------*/
+function refreshUI(){ renderLibrary(); updateStatsUI(); updateSessionWrong(); }
+window.addEventListener('beforeunload', ()=> saveAll());
+renderLibrary(); updateStatsUI();
+</script>
+</body>
+</html>
