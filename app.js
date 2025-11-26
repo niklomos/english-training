@@ -376,7 +376,14 @@ function showNextQuiz(mode){
 
   // --- ADDED: auto-play English once per quiz question ---
   // small timeout so UI updates (qWord / qCurrentMode) before TTS fires
-  setTimeout(()=> { try{ playEN('quiz'); }catch(e){ console.warn('TTS failed', e); } }, 80);
+// Auto-play English for quiz questions — but skip when mode is 'reverse'
+if (chosenMode !== 'reverse') {
+  setTimeout(()=> {
+    try { playEN('quiz'); }
+    catch(e) { console.warn('TTS failed', e); }
+  }, 80);
+}
+
   // -------------------------------------------------------
 
   if(chosenMode === 'spelling'){
