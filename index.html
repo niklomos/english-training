@@ -8,11 +8,7 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"
       rel="stylesheet"
     />
-    <!-- Bootstrap 5 CSS -->
-    <!-- head -->
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-
-<!-- just before </body> -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
@@ -152,9 +148,12 @@
               class="img-fluid"
               style="height: 80px; width: 80px; object-fit: contain"
             />
-            <div>
-              <div class="h5 mb-0">Vocabulary Trainer</div>
-            </div>
+            <div class="d-flex flex-column">
+    <div class="h5 mb-0 fw-bold">Vocabulary Trainer</div>
+    <div class="text-muted" style="margin-top:-4px; font-size: 0.85rem;">
+      Lightweight study app
+    </div>
+  </div>
           </a>
 
           <button
@@ -276,35 +275,12 @@
                 <div id="statWeak" class="h5 mb-0">0</div>
               </div>
 
-              <div class="d-flex gap-2">
-                <button
-                  class="btn btn-outline-secondary w-50"
-                  onclick="exportCSV()"
-                >
-                  Export CSV
-                </button>
+              <div class="d-flex ">
                 <button class="btn btn-danger w-50" onclick="clearAll()">
                   Clear
-                </button>
               </div>
 
               <div>
-                <div class="small-muted">Sample CSV (UTF-8)</div>
-                <div class="d-flex gap-2 mt-2">
-                  <button
-                    class="btn btn-outline-secondary"
-                    onclick="downloadSample()"
-                  >
-                    Download
-                  </button>
-                  <input
-                    id="fileIn"
-                    type="file"
-                    accept=".csv"
-                    onchange="handleImportFile(event)"
-                    class="form-control"
-                  />
-                </div>
               </div>
             </div>
           </aside>
@@ -510,9 +486,10 @@
           <label class="d-flex align-items-center gap-2 mb-0"
             >Mode:
             <select id="qMode" class="form-select" style="width: 240px">
-              <option value="multiple">EN → TH (Multiple choice)</option>
-              <option value="reverse">TH → EN (Reverse multiple choice)</option>
-              <option value="spelling">Spelling (เติมสะกดคำเป็น EN)</option>
+              <option value="multiple">EN → TH </option>
+              <option value="reverse">TH → EN </option>
+              <option value="spelling">Spelling </option>
+              <option value="spelling-no-thai">Spelling (NO TH )</option>
             </select>
           </label>
           <label class="d-flex align-items-center gap-2 mb-0"

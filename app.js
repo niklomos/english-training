@@ -162,42 +162,6 @@ async function copyCSV(){
   const csv = Papa.unparse(rows);
   try{ await navigator.clipboard.writeText(csv); alert('คัดลอกเรียบร้อย'); } catch(e){ alert('คัดลอกล้มเหลว'); }
 }
-function downloadSample(){
-  const sample = `Word,Translation
-apple,แอปเปิ้ล
-banana,กล้วย
-cat,แมว
-dog,สุนัข
-elephant,ช้าง
-fish,ปลา
-grape,องุ่น
-house,บ้าน
-ice,น้ำแข็ง
-juice,น้ำผลไม้
-kite,ว่าว
-lion,สิงโต
-monkey,ลิง
-notebook,สมุด
-orange,ส้ม
-pen,ปากกา
-queen,ราชินี
-rabbit,กระต่าย
-sun,ดวงอาทิตย์
-tree,ต้นไม้
-umbrella,ร่ม
-violet,ม่วง
-water,น้ำ
-xylophone,ไซโลโฟน
-yellow,สีเหลือง
-zebra,ม้าลาย
-car,รถยนต์
-book,หนังสือ
-chair,เก้าอี้
-table,โต๊ะ`;
-  const blob = new Blob(['\uFEFF' + sample], { type:'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href = url; a.download = 'vocab-sample-30.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-}
 
 /* ------------------------------
   Practice (flashcards) — updated with shuffle toggle & pID hide + auto EN play
@@ -367,11 +331,11 @@ function showNextQuiz(mode){
   const it = vocab[idx];
   let chosenMode = mode;
   if(quizRandomize || !chosenMode){
-    const modes = ['multiple','reverse','spelling'];
+    const modes = ['multiple','reverse','spelling','spelling-no-thai'];
     chosenMode = modes[Math.floor(Math.random()*modes.length)];
   }
   quizCurrent = { idx, item: it, mode: chosenMode };
-  const modeLabel = chosenMode === 'multiple' ? 'EN → TH' : chosenMode === 'reverse' ? 'TH → EN' : 'Spelling (EN)';
+  const modeLabel = chosenMode === 'multiple' ? 'EN → TH' : chosenMode === 'reverse' ? 'TH → EN' : chosenMode === 'spelling' ? 'Spelling EN' :'spelling-no-thai';
   document.getElementById('qCurrentMode').textContent = `Mode: ${modeLabel}`;
 
   // --- ADDED: auto-play English once per quiz question ---
@@ -388,6 +352,8 @@ if (chosenMode !== 'reverse') {
 
   if(chosenMode === 'spelling'){
     renderSpelling(quizCurrent);
+  } else if(chosenMode === 'spelling-no-thai'){
+    renderSpellingNoTH(quizCurrent);
   } else if(chosenMode === 'reverse'){
     const options = [it.word];
     const pool = vocab.map(v=>v.word).filter(w=> w !== it.word);
@@ -433,8 +399,12 @@ function renderReverse(q){
 }
 
 function renderSpelling(q){
+  // แสดงคำไทยชัดเจน (restore display)
+  const qHintEl = document.getElementById('qHint');
+  qHintEl.textContent = q.item.translation;
+  qHintEl.style.display = 'block';
+
   document.getElementById('qWord').textContent = '';
-  document.getElementById('qHint').textContent = q.item.translation;
   document.getElementById('qBlanks').innerHTML = '';
   document.getElementById('spellingInput').value = '';
   document.getElementById('spellingFeedback').textContent = '';
@@ -454,6 +424,34 @@ function renderSpelling(q){
   document.getElementById('qProgress').style.width = pct + '%';
   setTimeout(()=> document.getElementById('spellingInput').focus(), 60);
 }
+
+function renderSpellingNoTH(q){
+  // ซ่อนคำไทยและล้างข้อความ
+  const qHintEl = document.getElementById('qHint');
+  qHintEl.textContent = '';
+  qHintEl.style.display = 'none';
+
+  document.getElementById('qWord').textContent = '';
+  document.getElementById('qBlanks').innerHTML = '';
+  document.getElementById('spellingInput').value = '';
+  document.getElementById('spellingFeedback').textContent = '';
+  document.getElementById('spellingArea').style.display = 'block';
+  document.getElementById('qOptions').innerHTML = '';
+  const word = q.item.word;
+  const revealCount = Math.min(2, Math.floor(word.length/4));
+  const revealPositions = new Set();
+  while(revealPositions.size < revealCount){ revealPositions.add(Math.floor(Math.random()*word.length)); }
+  for(let i=0;i<word.length;i++){
+    const ch = word[i];
+    const span = document.createElement('div'); span.className='blank me-1';
+    span.textContent = revealPositions.has(i) ? ch : '_';
+    document.getElementById('qBlanks').appendChild(span);
+  }
+  const done = quizTotal - quizQueue.length; const pct = Math.round((done/quizTotal)*100);
+  document.getElementById('qProgress').style.width = pct + '%';
+  setTimeout(()=> document.getElementById('spellingInput').focus(), 60);
+}
+
 
 function submitSpelling(){ if(!quizCurrent) return; const input = document.getElementById('spellingInput').value.trim(); const correct = quizCurrent.item.word; evaluateSpelling(input, correct, quizCurrent.idx); }
 function revealSpelling(){ if(!quizCurrent) return; document.getElementById('spellingFeedback').textContent = `เฉลย: ${quizCurrent.item.word}`; vocab[quizCurrent.idx].wrong = (vocab[quizCurrent.idx].wrong||0) + 1; vocab[quizCurrent.idx].lastSeen = Date.now(); saveAll(); sessionWrong.push({ idx: quizCurrent.idx, word: vocab[quizCurrent.idx].word, correct: vocab[quizCurrent.idx].translation }); updateSessionWrong(); const auto = document.getElementById('autoNext').checked; if(auto) setTimeout(()=> showNextQuiz(quizRandomize ? null : quizFixedMode), 900); }
@@ -495,7 +493,26 @@ function evaluateQuiz(selected, correct, idx, el){
   } 
 }
 
-function updateSessionWrong(){ const el = document.getElementById('sessionWrong'); el.innerHTML = ''; sessionWrong.forEach(w=>{ const d = document.createElement('div'); d.textContent = `${w.word} → ${w.correct}`; el.appendChild(d); }); }
+function updateSessionWrong(){
+  const el = document.getElementById('sessionWrong');
+  el.innerHTML = '';
+  sessionWrong.forEach(w=>{
+    const d = document.createElement('div');
+    d.className = 'mb-1 d-flex align-items-center';
+    const badge = document.createElement('span');
+    badge.className = 'badge bg-danger rounded-pill me-2';
+    badge.style.minWidth = '28px';
+    badge.style.textAlign = 'center';
+    badge.style.display = 'inline-block';
+    badge.textContent = (typeof w.idx === 'number' && w.idx >= 0) ? (w.idx + 1) : '';
+    const txt = document.createElement('span');
+    txt.textContent = `${w.word} → ${w.correct}`;
+    d.appendChild(badge);
+    d.appendChild(txt);
+    el.appendChild(d);
+  });
+}
+
 function renderSessionWrong(){ updateSessionWrong(); }
 
 function retryWrong(){ const wrongIdx = vocab.map((it,i)=>({it,i})).filter(x=> (x.it.wrong||0) >= 1).map(x=>x.i); if(!wrongIdx.length) return alert('ไม่มีคำที่ผิดบ่อย'); quizQueue = [...wrongIdx]; shuffleArray(quizQueue); quizTotal = quizQueue.length; quizScore = 0; sessionWrong = []; document.getElementById('qScore').textContent = `${quizScore} / ${quizTotal}`; document.getElementById('quizCard').style.display = 'block'; showNextQuiz(quizRandomize ? null : quizFixedMode); }
