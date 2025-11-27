@@ -1,6 +1,8 @@
 /* app.js — generated from provided inline scripts
    Place this file in your project and include it after loading dependencies
    (Bootstrap JS bundle, PapaParse, and any HTML elements referenced).
+
+   Updated to accept quizCurrent as either an object or an array in multiple formats.
 */
 
 // ------------------------------
@@ -85,8 +87,8 @@ function renderLibrary(){
   if(!items.length){ list.innerHTML = '<div class="small small-muted">ไม่มีคำศัพท์</div>'; return; }
   items.forEach(it=>{
     const el = document.createElement('div'); el.className = 'list-group-item d-flex justify-content-between align-items-center';
-    el.innerHTML = `<div class="d-flex gap-3 align-items-center"><div class="badge bg-light text-muted" style="min-width:44px;text-align:center">${it.idx+1}</div><div><div class="fw-bold">${escapeHtml(it.word)}</div><div class="small text-muted">${escapeHtml(it.translation)}</div><div class="small">✅ ${it.correct||0} ❌ ${it.wrong||0}</div></div></div>
-      <div class="d-flex gap-2 align-items-center">
+    el.innerHTML = `<div class="d-flex gap-3 align-items-center"><div class="badge bg-light text-muted" style="min-width:44px;text-align:center">${it.idx+1}</div><div><div class="fw-bold">${escapeHtml(it.word)}</div><div class="small text-muted text-list">${escapeHtml(it.translation)}</div><div class="small">✅ ${it.correct||0} ❌ ${it.wrong||0}</div></div></div>
+      <div class="d-flex gap-2 align-items-center text-list">
         <button class="btn btn-outline-secondary btn-sm" onclick="playENIndex(${it.idx})">🔊</button>
         <button class="btn btn-outline-primary btn-sm" onclick="editItem(${it.idx})">✏️</button>
         <button class="btn btn-danger btn-sm" onclick="deleteItem(${it.idx})">🗑</button>
@@ -296,8 +298,68 @@ function practiceWeak(){ const weak = vocab.map((it,i)=>({it,i})).filter(x=> (x.
 
 /* ------------------------------
   Quiz (multiple choice + spelling + reverse + random per question)
+  Added helpers to accept quizCurrent as array OR object.
 -------------------------------*/
 let quizQueue = [], quizScore = 0, quizTotal = 0, quizCurrent = null, sessionWrong = [], quizRandomize = false, quizFixedMode = null;
+
+/* ------------------------------
+  Helper: normalize quizCurrent to canonical object
+  Accepts:
+    - object already like { idx, item:{word,translation}, ... }
+    - array formats:
+       [idx, word, translation]
+       [word, translation, idx]
+       [word, translation]
+       [word, translation, mode? , idx?] (flexible)
+  Returns canonical object or null
+-------------------------------*/
+function ensureQuizObj(q){
+  if(!q) return null;
+
+  // if already seems like an object (not array)
+  if(typeof q === 'object' && !Array.isArray(q)){
+    // if q.item exists and looks right, use it
+    if(q.item && (q.item.word !== undefined || q.item.translation !== undefined)){
+      return { idx: (q.idx !== undefined ? q.idx : (q.i !== undefined ? q.i : -1)), item: { word: String(q.item.word||''), translation: String(q.item.translation||'') }, mode: q.mode, options: q.options };
+    }
+    // otherwise try to pull word/translation/idx from object props or array-like indices
+    const word = (q.word !== undefined) ? q.word : (q[0] !== undefined ? q[0] : '');
+    const translation = (q.translation !== undefined) ? q.translation : (q[1] !== undefined ? q[1] : '');
+    const idx = (q.idx !== undefined) ? q.idx : (q.i !== undefined ? q.i : (typeof q[2] === 'number' ? q[2] : -1));
+    return { idx: idx, item: { word: String(word||''), translation: String(translation||'') }, mode: q.mode, options: q.options };
+  }
+
+  // if array
+  if(Array.isArray(q)){
+    let idx = null, word = '', translation = '';
+    // case: [number, word, translation]
+    if(typeof q[0] === 'number'){
+      idx = q[0]; word = q[1] || ''; translation = q[2] || '';
+    } else if(typeof q[q.length-1] === 'number'){
+      // case: [word, translation, number]
+      idx = q[q.length-1]; word = q[0] || ''; translation = q[1] || '';
+    } else {
+      // [word, translation]
+      word = q[0] || '';
+      translation = q[1] || '';
+    }
+    // try to resolve idx if not present
+    if(idx === null || idx === -1){
+      const found = vocab.findIndex(v => v.word === word && (translation ? v.translation === translation : true));
+      idx = found >= 0 ? found : -1;
+    }
+    return { idx: idx, item: { word: String(word||''), translation: String(translation||'') } };
+  }
+
+  // fallback
+  return null;
+}
+
+/* small getters */
+function getQuizIdx(q){ const o = ensureQuizObj(q); return o ? (typeof o.idx === 'number' ? o.idx : -1) : -1; }
+function getQuizItem(q){ const o = ensureQuizObj(q); return o ? o.item : null; }
+function getQuizWord(q){ const it = getQuizItem(q); return it ? it.word : ''; }
+function getQuizTranslation(q){ const it = getQuizItem(q); return it ? it.translation : ''; }
 
 function startQuiz(){
   if(!vocab.length) return alert('ไม่มีคำศัพท์');
@@ -312,11 +374,18 @@ function startQuiz(){
   // store chosen fixed mode (null if per-question random)
   quizFixedMode = quizRandomize ? null : fixedMode;
 
+  // build queue
   quizQueue = [];
   for(let i = start; i < end; i++) quizQueue.push(i);
   shuffleArray(quizQueue);
-  quizTotal = quizQueue.length; quizScore = 0; sessionWrong = [];
+
+  // reset score & sessionWrong and update UI immediately
+  quizTotal = quizQueue.length;
+  quizScore = 0;
+  sessionWrong = [];              // <-- เคลียร์ข้อมูลคำผิดจากรอบก่อน
+  updateSessionWrong();           // <-- อัพเดตส่วนแสดงรายการคำผิดบนหน้า
   document.getElementById('qScore').textContent = `${quizScore} / ${quizTotal}`;
+
   document.getElementById('quizCard').style.display = 'block';
   document.getElementById('spellingArea').style.display = 'none';
   showNextQuiz(quizRandomize ? null : quizFixedMode);
@@ -334,21 +403,19 @@ function showNextQuiz(mode){
     const modes = ['multiple','reverse','spelling','spelling-no-thai'];
     chosenMode = modes[Math.floor(Math.random()*modes.length)];
   }
+  // canonical: store as object with item
   quizCurrent = { idx, item: it, mode: chosenMode };
   const modeLabel = chosenMode === 'multiple' ? 'EN → TH' : chosenMode === 'reverse' ? 'TH → EN' : chosenMode === 'spelling' ? 'Spelling EN' :'spelling-no-thai';
   document.getElementById('qCurrentMode').textContent = `Mode: ${modeLabel}`;
 
   // --- ADDED: auto-play English once per quiz question ---
   // small timeout so UI updates (qWord / qCurrentMode) before TTS fires
-// Auto-play English for quiz questions — but skip when mode is 'reverse'
-if (chosenMode !== 'reverse') {
-  setTimeout(()=> {
-    try { playEN('quiz'); }
-    catch(e) { console.warn('TTS failed', e); }
-  }, 80);
-}
-
-  // -------------------------------------------------------
+  if (chosenMode !== 'reverse') {
+    setTimeout(()=> {
+      try { playEN('quiz'); }
+      catch(e) { console.warn('TTS failed', e); }
+    }, 80);
+  }
 
   if(chosenMode === 'spelling'){
     renderSpelling(quizCurrent);
@@ -453,21 +520,54 @@ function renderSpellingNoTH(q){
 }
 
 
-function submitSpelling(){ if(!quizCurrent) return; const input = document.getElementById('spellingInput').value.trim(); const correct = quizCurrent.item.word; evaluateSpelling(input, correct, quizCurrent.idx); }
-function revealSpelling(){ if(!quizCurrent) return; document.getElementById('spellingFeedback').textContent = `เฉลย: ${quizCurrent.item.word}`; vocab[quizCurrent.idx].wrong = (vocab[quizCurrent.idx].wrong||0) + 1; vocab[quizCurrent.idx].lastSeen = Date.now(); saveAll(); sessionWrong.push({ idx: quizCurrent.idx, word: vocab[quizCurrent.idx].word, correct: vocab[quizCurrent.idx].translation }); updateSessionWrong(); const auto = document.getElementById('autoNext').checked; if(auto) setTimeout(()=> showNextQuiz(quizRandomize ? null : quizFixedMode), 900); }
+// Updated: submitSpelling now passes quizCurrent as array or object and normalize inside evaluate
+function submitSpelling(){
+  if(!quizCurrent) return;
+  const input = document.getElementById('spellingInput').value.trim();
+  const correctObj = ensureQuizObj(quizCurrent);
+  const idx = (correctObj && typeof correctObj.idx === 'number') ? correctObj.idx : (quizCurrent && quizCurrent.idx) || -1;
+  evaluateSpelling(input, correctObj, idx);
+}
 
-function evaluateSpelling(input, correct, idx){ 
+// Updated revealSpelling to use ensureQuizObj
+function revealSpelling(){
+  if(!quizCurrent) return;
+  const q = ensureQuizObj(quizCurrent);
+  const idx = q ? q.idx : -1;
+  const word = q && q.item ? q.item.word : '';
+  document.getElementById('spellingFeedback').textContent = `เฉลย: ${word}`;
+  if(idx >= 0 && vocab[idx]){
+    vocab[idx].wrong = (vocab[idx].wrong||0) + 1;
+    vocab[idx].lastSeen = Date.now();
+    saveAll();
+    sessionWrong.push({ idx: idx, word: vocab[idx].word, correct: vocab[idx].translation });
+    updateSessionWrong();
+  }
+  const auto = document.getElementById('autoNext').checked;
+  if(auto) setTimeout(()=> showNextQuiz(quizRandomize ? null : quizFixedMode), 900);
+}
+
+// Updated evaluateSpelling to accept canonical object or other formats
+function evaluateSpelling(input, correctObj, idx){ 
   document.getElementById('spellingInput').disabled = true; 
   const auto = document.getElementById('autoNext').checked; 
-  if(input.toLowerCase() === correct.toLowerCase()){ 
-    document.getElementById('spellingFeedback').textContent = 'ถูกต้อง!'; 
-    vocab[idx].correct = (vocab[idx].correct||0) + 1; quizScore++; 
+
+  const correctItem = (correctObj && correctObj.item) ? correctObj.item : (typeof correctObj === 'string' ? { word: String(correctObj), translation: '' } : null);
+  const correctWord = correctItem ? (correctItem.word || '') : '';
+  const correctTrans = correctItem ? (correctItem.translation || '') : '';
+  const normalizedInput = String(input || '').trim().toLowerCase();
+  const normalizedCorrect = String(correctWord || '').trim().toLowerCase();
+
+  if(normalizedInput === normalizedCorrect){ 
+    document.getElementById('spellingFeedback').textContent = `ถูกต้อง— เฉลย: ${correctTrans}`; 
+    if(idx >= 0 && vocab[idx]) { vocab[idx].correct = (vocab[idx].correct||0) + 1; }
+    quizScore++; 
   } else { 
-    document.getElementById('spellingFeedback').textContent = `ผิด — เฉลย: ${correct}`; 
-    vocab[idx].wrong = (vocab[idx].wrong||0) + 1; 
-    sessionWrong.push({ idx, word: vocab[idx].word, correct: vocab[idx].translation }); 
+    document.getElementById('spellingFeedback').textContent = `ผิด — คำที่ถูกต้อง: ${correctWord} ${correctTrans ? ('(' + correctTrans + ')') : ''}`; 
+    if(idx >= 0 && vocab[idx]) { vocab[idx].wrong = (vocab[idx].wrong||0) + 1; sessionWrong.push({ idx, word: vocab[idx].word, correct: vocab[idx].translation }); }
   } 
-  vocab[idx].lastSeen = Date.now(); saveAll(); document.getElementById('qScore').textContent = `${quizScore} / ${quizTotal}`; updateSessionWrong(); 
+  if(idx >= 0 && vocab[idx]){ vocab[idx].lastSeen = Date.now(); }
+  saveAll(); document.getElementById('qScore').textContent = `${quizScore} / ${quizTotal}`; updateSessionWrong(); 
   if(auto){ 
     setTimeout(()=> { document.getElementById('spellingInput').disabled = false; showNextQuiz(quizRandomize ? null : quizFixedMode); }, 900); 
   } else { 
@@ -479,13 +579,13 @@ function evaluateQuiz(selected, correct, idx, el){
   document.querySelectorAll('#qOptions .option').forEach(o=>o.onclick = null); 
   const auto = document.getElementById('autoNext').checked; 
   if(selected === correct){ 
-    el.classList.add('correct'); quizScore++; vocab[idx].correct = (vocab[idx].correct || 0) + 1; 
+    el.classList.add('correct'); quizScore++; if(idx >= 0 && vocab[idx]) vocab[idx].correct = (vocab[idx].correct || 0) + 1; 
   } else { 
-    el.classList.add('wrong'); vocab[idx].wrong = (vocab[idx].wrong||0) + 1; 
+    el.classList.add('wrong'); if(idx >= 0 && vocab[idx]) vocab[idx].wrong = (vocab[idx].wrong||0) + 1; 
     document.querySelectorAll('#qOptions .option').forEach(o=>{ if(o.textContent === correct) o.classList.add('correct'); }); 
-    sessionWrong.push({ idx, word: vocab[idx].word, correct: vocab[idx].translation }); 
+    if(idx >= 0 && vocab[idx]) sessionWrong.push({ idx, word: vocab[idx].word, correct: vocab[idx].translation }); 
   } 
-  vocab[idx].lastSeen = Date.now(); saveAll(); document.getElementById('qScore').textContent = `${quizScore} / ${quizTotal}`; updateSessionWrong(); 
+  if(idx >= 0 && vocab[idx]) vocab[idx].lastSeen = Date.now(); saveAll(); document.getElementById('qScore').textContent = `${quizScore} / ${quizTotal}`; updateSessionWrong(); 
   if(auto){ 
     setTimeout(()=> showNextQuiz(quizRandomize ? null : quizFixedMode), 700); 
   } else { 
@@ -521,7 +621,24 @@ function retryWrong(){ const wrongIdx = vocab.map((it,i)=>({it,i})).filter(x=> (
   Audio (EN TTS only)
 -------------------------------*/
 let enVoice = null; function initVoices(){ const voices = speechSynthesis.getVoices(); enVoice = voices.find(v => v.lang && v.lang.startsWith('en')) || null; } speechSynthesis.onvoiceschanged = initVoices; initVoices();
-function playEN(mode){ let text = null; if(mode === 'practice'){ const idx = parseInt(document.getElementById('practiceCard').dataset.idx || -1); if(idx >= 0) text = vocab[idx].word; } else if(mode === 'quiz'){ if(quizCurrent && quizCurrent.item) text = quizCurrent.item.word; } else if(typeof mode === 'number'){ text = vocab[mode].word; } if(!text) return; const u = new SpeechSynthesisUtterance(text); u.lang = 'en-US'; if(enVoice) u.voice = enVoice; speechSynthesis.speak(u); }
+// Updated playEN: uses ensureQuizObj so quizCurrent can be array/object
+function playEN(mode){
+  let text = null;
+  if(mode === 'practice'){
+    const idx = parseInt(document.getElementById('practiceCard').dataset.idx || -1);
+    if(idx >= 0) text = vocab[idx].word;
+  } else if(mode === 'quiz'){
+    const q = ensureQuizObj(quizCurrent);
+    if(q && q.item) text = q.item.word;
+  } else if(typeof mode === 'number'){
+    text = vocab[mode] && vocab[mode].word;
+  }
+  if(!text) return;
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'en-US';
+  if(enVoice) u.voice = enVoice;
+  speechSynthesis.speak(u);
+}
 function playENIndex(i){ playEN(i); }
 
 /* ------------------------------
