@@ -1,16 +1,38 @@
-/* app.js — generated from provided inline scripts
-   Place this file in your project and include it after loading dependencies
-   (Bootstrap JS bundle, PapaParse, and any HTML elements referenced).
-
-   Updated to accept quizCurrent as either an object or an array in multiple formats.
-*/
+/* app.js — vocabulary trainer with theme, Lottie logo, and button effects */
 
 // ------------------------------
-// Theme toggle
+// Theme toggle + Lottie logo
 // ------------------------------
 const THEME_KEY = 'vt_theme';
 const themeToggle = document.getElementById('themeToggle');
 const navEl = document.querySelector('.navbar');
+let logoLottieInstance = null;
+
+function loadLogoLottie(theme) {
+  const logoContainer = document.getElementById('logoLottie');
+  if (!logoContainer || typeof lottie === 'undefined') return;
+
+  // ถ้ามี animation เก่าอยู่ ให้ destroy ก่อน
+  if (logoLottieInstance) {
+    logoLottieInstance.destroy();
+    logoLottieInstance = null;
+  }
+
+  // ใช้ Lottie คนละอันสำหรับ light/dark (ใช้ URL จาก LottieFiles)
+  const path =
+    theme === 'dark'
+      ? 'https://assets7.lottiefiles.com/packages/lf20_nDZD95BlQM.json' // dark
+      : 'https://assets5.lottiefiles.com/packages/lf20_V9t630.json';      // light
+
+  logoLottieInstance = lottie.loadAnimation({
+    container: logoContainer,
+    renderer: 'svg',
+    loop: true,
+    autoplay: true,
+    path
+  });
+}
+
 function applyTheme(theme){
   if(theme === 'dark'){
     document.documentElement.classList.add('dark');
@@ -21,7 +43,6 @@ function applyTheme(theme){
     navEl && navEl.classList.remove('navbar-dark');
     navEl && navEl.classList.add('navbar-light');
   }
-  // update button icon / aria
   if(theme === 'dark'){
     themeToggle && (themeToggle.textContent = '☀️');
     themeToggle && themeToggle.setAttribute('aria-pressed','true');
@@ -30,11 +51,15 @@ function applyTheme(theme){
     themeToggle && themeToggle.setAttribute('aria-pressed','false');
   }
   try{ localStorage.setItem(THEME_KEY, theme); }catch(e){}
+
+  loadLogoLottie(theme);
 }
+
 function toggleTheme(){
   const cur = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
   applyTheme(cur === 'dark' ? 'light' : 'dark');
 }
+
 // init on load
 (function(){
   const saved = localStorage.getItem(THEME_KEY);
@@ -48,12 +73,8 @@ themeToggle && themeToggle.addEventListener('click', toggleTheme);
 
 
 // ------------------------------
-// Original app script (vocabulary trainer)
+// Data model & storage
 // ------------------------------
-
-/* ------------------------------
-  Data model & storage
--------------------------------*/
 const STORAGE_KEY = 'vocab_responsive_v1';
 let vocab = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
 function saveAll(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(vocab)); updateStatsUI(); }
@@ -76,6 +97,44 @@ document.querySelectorAll('.nav-link').forEach(t => {
 /* ------------------------------
   Library functions
 -------------------------------*/
+// สร้าง Lottie animation ให้ปุ่มใน Library
+function initListLottieIcons() {
+  if (typeof lottie === 'undefined') return;
+
+  const containers = document.querySelectorAll('#list .lottie-icon[data-lottie]');
+
+  containers.forEach(el => {
+    // กันไม่ให้ init ซ้ำ
+    if (el._lottieInstance) return;
+
+    const type = el.dataset.lottie;
+    let path = null;
+
+    // TODO: ชี้ไปที่ไฟล์ Lottie ของจริง
+    switch (type) {
+      case 'sound':
+        path = './lotties/sound.json';   // ไอคอนลำโพง
+        break;
+      case 'edit':
+        path = './lotties/edit.json';    // ดินสอ / แก้ไข
+        break;
+      case 'delete':
+        path = './lotties/delete.json';  // ถังขยะ / ลบ
+        break;
+    }
+
+    if (!path) return;
+
+    el._lottieInstance = lottie.loadAnimation({
+      container: el,
+      renderer: 'svg',
+      loop: true,
+      autoplay: true,
+      path
+    });
+  });
+}
+
 function renderLibrary(){
   const list = document.getElementById('list'); list.innerHTML = '';
   const q = (document.getElementById('search').value || '').toLowerCase();
@@ -86,16 +145,35 @@ function renderLibrary(){
   if(q) items = items.filter(i => (i.word + ' ' + i.translation).toLowerCase().includes(q));
   if(!items.length){ list.innerHTML = '<div class="small small-muted">ไม่มีคำศัพท์</div>'; return; }
   items.forEach(it=>{
-    const el = document.createElement('div'); el.className = 'list-group-item d-flex justify-content-between align-items-center';
-    el.innerHTML = `<div class="d-flex gap-3 align-items-center"><div class="badge bg-light text-muted" style="min-width:44px;text-align:center">${it.idx+1}</div><div><div class="fw-bold text-word">${escapeHtml(it.word)}</div><div class="small text-muted text-list">${escapeHtml(it.translation)}</div><div class="small">✅ ${it.correct||0} ❌ ${it.wrong||0}</div></div></div>
+    const el = document.createElement('div');
+    el.className = 'list-group-item d-flex justify-content-between align-items-center';
+    el.innerHTML = `
+      <div class="d-flex gap-3 align-items-center">
+        <div class="badge bg-light text-muted" style="min-width:44px;text-align:center">${it.idx+1}</div>
+        <div>
+          <div class="fw-bold text-word">${escapeHtml(it.word)}</div>
+          <div class="small text-muted text-list">${escapeHtml(it.translation)}</div>
+          <div class="small">✅ ${it.correct||0} ❌ ${it.wrong||0}</div>
+        </div>
+      </div>
       <div class="d-flex gap-2 align-items-center text-list">
-        <button class="btn btn-outline-secondary btn-sm" onclick="playENIndex(${it.idx})">🔊</button>
-        <button class="btn btn-outline-primary btn-sm" onclick="editItem(${it.idx})">✏️</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteItem(${it.idx})">🗑</button>
+        <button class="btn btn-icon-circle icon-sound btn-sm" onclick="playENIndex(${it.idx})">
+          <span class="lottie-icon" data-lottie="sound"></span>
+        </button>
+        <button class="btn btn-icon-circle icon-edit btn-sm" onclick="editItem(${it.idx})">
+          <span class="lottie-icon" data-lottie="edit"></span>
+        </button>
+        <button class="btn btn-icon-circle icon-delete btn-sm" onclick="deleteItem(${it.idx})">
+          <span class="lottie-icon" data-lottie="delete"></span>
+        </button>
       </div>`;
     list.appendChild(el);
   });
+
+  // ⭐ หลังจากสร้าง list เสร็จ ให้ init Lottie icons
+  initListLottieIcons();
 }
+
 function addWord(){
   const w = document.getElementById('inputWord').value.trim();
   const t = document.getElementById('inputTrans').value.trim();
@@ -166,15 +244,13 @@ async function copyCSV(){
 }
 
 /* ------------------------------
-  Practice (flashcards) — updated with shuffle toggle & pID hide + auto EN play
+  Practice (flashcards)
 -------------------------------*/
 let practiceQueue = [], practiceIndex = 0;
-let shuffleMode = false; // false = ordered, true = shuffle
+let shuffleMode = false;
 
-// toggle shuffle mode (connect with shuffle button)
 function toggleShuffle(btn){
   shuffleMode = !shuffleMode;
-  // Update button UI
   if(btn){
     btn.classList.toggle('btn-primary', shuffleMode);
     btn.classList.toggle('btn-outline-secondary', !shuffleMode);
@@ -185,14 +261,12 @@ function toggleShuffle(btn){
     if(b) toggleShuffle(b);
   }
 
-  // If practice is active, adjust current queue immediately
   if(practiceQueue.length){
     if(shuffleMode){
       shuffleArray(practiceQueue);
       practiceIndex = 0;
       showPracticeCard();
     } else {
-      // rebuild ordered queue from current start/end and try to keep current item
       const s = parseInt(document.getElementById('pStart').value) || 1;
       const e = parseInt(document.getElementById('pEnd').value) || vocab.length;
       const start = Math.max(1, s) - 1, end = Math.min(vocab.length, e);
@@ -204,7 +278,6 @@ function toggleShuffle(btn){
       showPracticeCard();
     }
   } else {
-    // no active queue: still update UI (hide/show pID)
     showPracticeCard();
   }
 }
@@ -218,7 +291,6 @@ function startPractice(){
   practiceQueue = [];
   for(let i = start; i < end; i++) practiceQueue.push(i);
 
-  // If shuffle mode is on, shuffle before start
   if(shuffleMode) shuffleArray(practiceQueue);
 
   practiceIndex = 0;
@@ -226,11 +298,9 @@ function startPractice(){
   showPracticeCard();
 }
 
-// showPracticeCard: hides pID when shuffleMode === true and auto-plays EN once
 function showPracticeCard(){
   const pIDEl = document.getElementById('pID');
   if(!practiceQueue.length){
-    // no queue: clear card
     if(pIDEl) pIDEl.style.display = '';
     document.getElementById('pWord').textContent = '';
     document.getElementById('pTrans').textContent = '';
@@ -246,7 +316,6 @@ function showPracticeCard(){
   const idx = practiceQueue[practiceIndex];
   const it = vocab[idx];
 
-  // hide or show pID based on shuffleMode
   if(shuffleMode){
     if(pIDEl) pIDEl.style.display = 'none';
   } else {
@@ -256,7 +325,6 @@ function showPracticeCard(){
     }
   }
 
-  // Word / translation / dataset etc.
   document.getElementById('pWord').textContent = it ? it.word : '(no word)';
   document.getElementById('pTrans').textContent = it ? it.translation : '';
   document.getElementById('pTrans').style.display = 'none';
@@ -266,13 +334,10 @@ function showPracticeCard(){
   const pct = Math.round(((practiceIndex + 1) / practiceQueue.length) * 100);
   document.getElementById('pProgress').style.width = pct + '%';
 
-  // AUTO play English pronunciation once for this shown card
-  // Use a tiny timeout so UI updates before TTS starts (helps in some browsers)
   setTimeout(()=> {
     try{
       playEN('practice');
     }catch(e){
-      // silently ignore speech errors
       console.warn('TTS play failed', e);
     }
   }, 60);
@@ -281,12 +346,10 @@ function showPracticeCard(){
 function revealPractice(){ document.getElementById('pTrans').style.display = 'block'; }
 function nextPractice(){ practiceIndex++; if(practiceIndex >= practiceQueue.length) practiceIndex = 0; showPracticeCard(); }
 function shufflePractice(){
-  // If no active queue, interpret as toggle of shuffle mode (user wants to set active/inactive)
   if(!practiceQueue.length){
     toggleShuffle(document.getElementById('shuffleBtn'));
     return;
   }
-  // If active queue exists, shuffle it immediately
   shuffleArray(practiceQueue);
   practiceIndex = 0;
   showPracticeCard();
@@ -297,53 +360,33 @@ function stopPractice(){ document.getElementById('practiceCard').style.display =
 function practiceWeak(){ const weak = vocab.map((it,i)=>({it,i})).filter(x=> (x.it.wrong||0) >= 2).map(x=>x.i); if(!weak.length) return alert('ไม่มีคำที่ผิดบ่อย'); practiceQueue = weak; practiceIndex = 0; document.getElementById('practiceCard').style.display = 'block'; showPracticeCard(); }
 
 /* ------------------------------
-  Quiz (multiple choice + spelling + reverse + random per question)
-  Added helpers to accept quizCurrent as array OR object.
+  Quiz + spelling
 -------------------------------*/
 let quizQueue = [], quizScore = 0, quizTotal = 0, quizCurrent = null, sessionWrong = [], quizRandomize = false, quizFixedMode = null;
 
-/* ------------------------------
-  Helper: normalize quizCurrent to canonical object
-  Accepts:
-    - object already like { idx, item:{word,translation}, ... }
-    - array formats:
-       [idx, word, translation]
-       [word, translation, idx]
-       [word, translation]
-       [word, translation, mode? , idx?] (flexible)
-  Returns canonical object or null
--------------------------------*/
 function ensureQuizObj(q){
   if(!q) return null;
 
-  // if already seems like an object (not array)
   if(typeof q === 'object' && !Array.isArray(q)){
-    // if q.item exists and looks right, use it
     if(q.item && (q.item.word !== undefined || q.item.translation !== undefined)){
       return { idx: (q.idx !== undefined ? q.idx : (q.i !== undefined ? q.i : -1)), item: { word: String(q.item.word||''), translation: String(q.item.translation||'') }, mode: q.mode, options: q.options };
     }
-    // otherwise try to pull word/translation/idx from object props or array-like indices
     const word = (q.word !== undefined) ? q.word : (q[0] !== undefined ? q[0] : '');
     const translation = (q.translation !== undefined) ? q.translation : (q[1] !== undefined ? q[1] : '');
     const idx = (q.idx !== undefined) ? q.idx : (q.i !== undefined ? q.i : (typeof q[2] === 'number' ? q[2] : -1));
     return { idx: idx, item: { word: String(word||''), translation: String(translation||'') }, mode: q.mode, options: q.options };
   }
 
-  // if array
   if(Array.isArray(q)){
     let idx = null, word = '', translation = '';
-    // case: [number, word, translation]
     if(typeof q[0] === 'number'){
       idx = q[0]; word = q[1] || ''; translation = q[2] || '';
     } else if(typeof q[q.length-1] === 'number'){
-      // case: [word, translation, number]
       idx = q[q.length-1]; word = q[0] || ''; translation = q[1] || '';
     } else {
-      // [word, translation]
       word = q[0] || '';
       translation = q[1] || '';
     }
-    // try to resolve idx if not present
     if(idx === null || idx === -1){
       const found = vocab.findIndex(v => v.word === word && (translation ? v.translation === translation : true));
       idx = found >= 0 ? found : -1;
@@ -351,15 +394,8 @@ function ensureQuizObj(q){
     return { idx: idx, item: { word: String(word||''), translation: String(translation||'') } };
   }
 
-  // fallback
   return null;
 }
-
-/* small getters */
-function getQuizIdx(q){ const o = ensureQuizObj(q); return o ? (typeof o.idx === 'number' ? o.idx : -1) : -1; }
-function getQuizItem(q){ const o = ensureQuizObj(q); return o ? o.item : null; }
-function getQuizWord(q){ const it = getQuizItem(q); return it ? it.word : ''; }
-function getQuizTranslation(q){ const it = getQuizItem(q); return it ? it.translation : ''; }
 
 function startQuiz(){
   if(!vocab.length) return alert('ไม่มีคำศัพท์');
@@ -370,20 +406,16 @@ function startQuiz(){
 
   quizRandomize = document.getElementById('randomMode').checked;
   const fixedMode = document.getElementById('qMode').value;
-
-  // store chosen fixed mode (null if per-question random)
   quizFixedMode = quizRandomize ? null : fixedMode;
 
-  // build queue
   quizQueue = [];
   for(let i = start; i < end; i++) quizQueue.push(i);
   shuffleArray(quizQueue);
 
-  // reset score & sessionWrong and update UI immediately
   quizTotal = quizQueue.length;
   quizScore = 0;
-  sessionWrong = [];              // <-- เคลียร์ข้อมูลคำผิดจากรอบก่อน
-  updateSessionWrong();           // <-- อัพเดตส่วนแสดงรายการคำผิดบนหน้า
+  sessionWrong = [];
+  updateSessionWrong();
   document.getElementById('qScore').textContent = `${quizScore} / ${quizTotal}`;
 
   document.getElementById('quizCard').style.display = 'block';
@@ -403,13 +435,10 @@ function showNextQuiz(mode){
     const modes = ['multiple','reverse','spelling','spelling-no-thai'];
     chosenMode = modes[Math.floor(Math.random()*modes.length)];
   }
-  // canonical: store as object with item
   quizCurrent = { idx, item: it, mode: chosenMode };
   const modeLabel = chosenMode === 'multiple' ? 'EN → TH' : chosenMode === 'reverse' ? 'TH → EN' : chosenMode === 'spelling' ? 'Spelling EN' :'spelling-no-thai';
   document.getElementById('qCurrentMode').textContent = `Mode: ${modeLabel}`;
 
-  // --- ADDED: auto-play English once per quiz question ---
-  // small timeout so UI updates (qWord / qCurrentMode) before TTS fires
   if (chosenMode !== 'reverse') {
     setTimeout(()=> {
       try { playEN('quiz'); }
@@ -466,7 +495,6 @@ function renderReverse(q){
 }
 
 function renderSpelling(q){
-  // แสดงคำไทยชัดเจน (restore display)
   const qHintEl = document.getElementById('qHint');
   qHintEl.textContent = q.item.translation;
   qHintEl.style.display = 'block';
@@ -493,7 +521,6 @@ function renderSpelling(q){
 }
 
 function renderSpellingNoTH(q){
-  // ซ่อนคำไทยและล้างข้อความ
   const qHintEl = document.getElementById('qHint');
   qHintEl.textContent = '';
   qHintEl.style.display = 'none';
@@ -519,8 +546,6 @@ function renderSpellingNoTH(q){
   setTimeout(()=> document.getElementById('spellingInput').focus(), 60);
 }
 
-
-// Updated: submitSpelling now passes quizCurrent as array or object and normalize inside evaluate
 function submitSpelling(){
   if(!quizCurrent) return;
   const input = document.getElementById('spellingInput').value.trim();
@@ -529,7 +554,6 @@ function submitSpelling(){
   evaluateSpelling(input, correctObj, idx);
 }
 
-// Updated revealSpelling to use ensureQuizObj
 function revealSpelling(){
   if(!quizCurrent) return;
   const q = ensureQuizObj(quizCurrent);
@@ -547,7 +571,6 @@ function revealSpelling(){
   if(auto) setTimeout(()=> showNextQuiz(quizRandomize ? null : quizFixedMode), 900);
 }
 
-// Updated evaluateSpelling to accept canonical object or other formats
 function evaluateSpelling(input, correctObj, idx){ 
   document.getElementById('spellingInput').disabled = true; 
   const auto = document.getElementById('autoNext').checked; 
@@ -620,8 +643,14 @@ function retryWrong(){ const wrongIdx = vocab.map((it,i)=>({it,i})).filter(x=> (
 /* ------------------------------
   Audio (EN TTS only)
 -------------------------------*/
-let enVoice = null; function initVoices(){ const voices = speechSynthesis.getVoices(); enVoice = voices.find(v => v.lang && v.lang.startsWith('en')) || null; } speechSynthesis.onvoiceschanged = initVoices; initVoices();
-// Updated playEN: uses ensureQuizObj so quizCurrent can be array/object
+let enVoice = null;
+function initVoices(){
+  const voices = speechSynthesis.getVoices();
+  enVoice = voices.find(v => v.lang && v.lang.startsWith('en')) || null;
+}
+speechSynthesis.onvoiceschanged = initVoices;
+initVoices();
+
 function playEN(mode){
   let text = null;
   if(mode === 'practice'){
@@ -644,9 +673,26 @@ function playENIndex(i){ playEN(i); }
 /* ------------------------------
   Stats & helpers
 -------------------------------*/
-function updateStatsUI(){ document.getElementById('statTotal').textContent = vocab.length; document.getElementById('statMaster').textContent = vocab.filter(i=> (i.correct||0) >= 3).length; document.getElementById('statWeak').textContent = vocab.filter(i=> (i.wrong||0) >= 2).length; document.getElementById('dTotal').textContent = vocab.length; document.getElementById('dMaster').textContent = vocab.filter(i=> (i.correct||0) >= 3).length; document.getElementById('dWeak').textContent = vocab.filter(i=> (i.wrong||0) >= 2).length; renderWeakList(); }
-function renderWeakList(){ const el = document.getElementById('weakList'); el.innerHTML = ''; const weak = vocab.map((it,i)=>({...it,i})).filter(x=> (x.wrong||0) >= 2).sort((a,b)=> (b.wrong||0) - (a.wrong||0)); weak.forEach(w=>{ const div = document.createElement('div'); div.className = 'list-group-item d-flex justify-content-between align-items-center'; div.innerHTML = `<div class="d-flex gap-3 align-items-center"><div class="badge bg-light text-muted" style="min-width:44px;text-align:center">${w.i+1}</div><div><div class="fw-bold text-word">${escapeHtml(w.word)}</div><div class="small text-muted text-list">${escapeHtml(w.translation)}</div><div class="small">Wrong: ${w.wrong||0}</div></div></div>
-        <div class="d-flex gap-2"><button class="btn btn-primary btn-sm" onclick="practiceSingle(${w.i})">Practice</button><button class="btn btn-outline-secondary btn-sm" onclick="editItem(${w.i})">Edit</button></div>`; el.appendChild(div); }); }
+function updateStatsUI(){
+  document.getElementById('statTotal').textContent = vocab.length;
+  document.getElementById('statMaster').textContent = vocab.filter(i=> (i.correct||0) >= 3).length;
+  document.getElementById('statWeak').textContent = vocab.filter(i=> (i.wrong||0) >= 2).length;
+  document.getElementById('dTotal').textContent = vocab.length;
+  document.getElementById('dMaster').textContent = vocab.filter(i=> (i.correct||0) >= 3).length;
+  document.getElementById('dWeak').textContent = vocab.filter(i=> (i.wrong||0) >= 2).length;
+  renderWeakList();
+}
+function renderWeakList(){
+  const el = document.getElementById('weakList'); el.innerHTML = '';
+  const weak = vocab.map((it,i)=>({...it,i})).filter(x=> (x.wrong||0) >= 2).sort((a,b)=> (b.wrong||0) - (a.wrong||0));
+  weak.forEach(w=>{
+    const div = document.createElement('div');
+    div.className = 'list-group-item d-flex justify-content-between align-items-center';
+    div.innerHTML = `<div class="d-flex gap-3 align-items-center"><div class="badge bg-light text-muted" style="min-width:44px;text-align:center">${w.i+1}</div><div><div class="fw-bold text-word">${escapeHtml(w.word)}</div><div class="small text-muted text-list">${escapeHtml(w.translation)}</div><div class="small">Wrong: ${w.wrong||0}</div></div></div>
+        <div class="d-flex gap-2"><button class="btn btn-primary btn-sm" onclick="practiceSingle(${w.i})">Practice</button><button class="btn btn-outline-secondary btn-sm" onclick="editItem(${w.i})">Edit</button></div>`;
+    el.appendChild(div);
+  });
+}
 function practiceSingle(i){ practiceQueue = [i]; practiceIndex = 0; document.getElementById('practiceCard').style.display = 'block'; showPracticeCard(); }
 function resetStats(){ if(!confirm('Reset stats?')) return; vocab.forEach(i=>{ i.correct=0; i.wrong=0; }); saveAll(); updateStatsUI(); alert('Reset done'); }
 function shuffleArray(a){ for(let i=a.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } }
@@ -658,3 +704,37 @@ function escapeHtml(s){ return String(s).replaceAll('&','&amp;').replaceAll('<',
 function refreshUI(){ renderLibrary(); updateStatsUI(); updateSessionWrong(); }
 window.addEventListener('beforeunload', ()=> saveAll());
 renderLibrary(); updateStatsUI();
+
+/* ============================
+   FANCY BUTTON RIPPLE EFFECT
+   ============================= */
+(function initButtonRipple() {
+  const buttons = document.querySelectorAll('button, .btn');
+
+  buttons.forEach(btn => {
+    const style = window.getComputedStyle(btn);
+    if (style.position === 'static') {
+      btn.style.position = 'relative';
+    }
+    if (style.overflow === 'visible') {
+      btn.style.overflow = 'hidden';
+    }
+
+    btn.addEventListener('click', function (e) {
+      const rect = this.getBoundingClientRect();
+      const diameter = Math.max(rect.width, rect.height);
+      const radius = diameter / 2;
+
+      const circle = document.createElement('span');
+      circle.classList.add('ripple');
+      circle.style.width = circle.style.height = `${diameter}px`;
+      circle.style.left = `${e.clientX - rect.left - radius}px`;
+      circle.style.top = `${e.clientY - rect.top - radius}px`;
+
+      const oldRipple = this.querySelector('.ripple');
+      if (oldRipple) oldRipple.remove();
+
+      this.appendChild(circle);
+    });
+  });
+})();
