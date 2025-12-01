@@ -84,15 +84,26 @@ function loadAll(){ vocab = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'
   Tab handling (uses data-tab attributes)
 -------------------------------*/
 document.querySelectorAll('.nav-link').forEach(t => {
-  t.addEventListener('click', ()=>{
-    document.querySelectorAll('.nav-link').forEach(x=>x.classList.remove('active'));
+  t.addEventListener('click', () => {
+    // สลับแท็บเหมือนเดิม
+    document.querySelectorAll('.nav-link').forEach(x => x.classList.remove('active'));
     t.classList.add('active');
     const tab = t.dataset.tab;
-    document.querySelectorAll('[id^="panel-"]').forEach(p=>p.style.display='none');
+    document.querySelectorAll('[id^="panel-"]').forEach(p => p.style.display = 'none');
     document.getElementById('panel-' + tab).style.display = 'block';
     refreshUI();
+
+    // ===== ใช้ Bootstrap ปิดเมนูแบบ smooth =====
+    const navCollapse = document.getElementById('mainNav');
+    const navToggler = document.querySelector('.navbar-toggler');
+
+    // ถ้าอยู่ในโหมด mobile และเมนูเปิดอยู่ (มี class show)
+    if (navCollapse && navCollapse.classList.contains('show') && navToggler) {
+      navToggler.click();   // ให้ Bootstrap จัดการ hide + animation ให้เอง
+    }
   });
 });
+
 
 /* ------------------------------
   Library functions
