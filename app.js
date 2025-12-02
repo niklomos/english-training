@@ -112,50 +112,7 @@ document.querySelectorAll('.nav-link').forEach(t => {
   Library functions + Lottie icons
 -------------------------------*/
 
-// ทำให้ Lottie icon ใน list เล่นเฉพาะตอน hover เพื่อลดการกินเครื่อง
-function initListLottieIcons() {
-  if (typeof lottie === 'undefined') return;
 
-  const containers = document.querySelectorAll('#list .lottie-icon[data-lottie]');
-
-  containers.forEach(el => {
-    if (el._lottieInstance) return;
-
-    const type = el.dataset.lottie;
-    let path = null;
-    switch (type) {
-      case 'sound':
-        path = './icon/sound.png';
-        break;
-      case 'edit':
-        path = './icon/edit.png';
-        break;
-      case 'delete':
-        path = './icon/delete.png';
-        break;
-    }
-    if (!path) return;
-
-    const instance = lottie.loadAnimation({
-      container: el,
-      renderer: 'svg',
-      loop: false,          // ไม่ต้องวนตลอด
-      autoplay: false,      // ให้เล่นตอน hover แทน
-      path,
-      rendererSettings: {
-        progressiveLoad: true
-      }
-    });
-    el._lottieInstance = instance;
-
-    const btn = el.closest('button');
-    if (btn) {
-      btn.addEventListener('mouseenter', () => {
-        instance.goToAndPlay(0, true);
-      });
-    }
-  });
-}
 
 // ตัว render จริง (เรียกตรง ๆ ตอน add / import / clear)
 function renderLibraryImmediate(){
@@ -206,7 +163,6 @@ function renderLibraryImmediate(){
     list.appendChild(el);
   });
 
-  initListLottieIcons();
 }
 
 // เวอร์ชัน debounce สำหรับ search (เรียกจาก oninput ใน HTML)
@@ -575,7 +531,42 @@ function renderReverse(q){
   document.getElementById('qProgress').style.width = pct + '%';
 }
 
+function resetSpellingStatus() {
+  const wrapper = document.getElementById('spellingStatus');
+  if (!wrapper) return;
+  wrapper.classList.remove('visible', 'is-correct', 'is-wrong');
+  const title = document.getElementById('spellingStatusTitle');
+  const detail = document.getElementById('spellingStatusDetail');
+  if (title) title.textContent = '';
+  if (detail) detail.textContent = '';
+}
+
+function showSpellingStatus(kind, word, detailText) {
+  const wrapper = document.getElementById('spellingStatus');
+  const title = document.getElementById('spellingStatusTitle');
+  const detail = document.getElementById('spellingStatusDetail');
+  const icon = document.getElementById('spellingStatusIcon');
+  if (!wrapper || !title || !detail || !icon) return;
+
+  wrapper.classList.remove('is-correct', 'is-wrong');
+
+  if (kind === 'correct') {
+    wrapper.classList.add('is-correct');
+    title.textContent = 'ถูกต้อง';
+    icon.textContent = '✓';
+  } else if (kind === 'wrong') {
+    wrapper.classList.add('is-wrong');
+    title.textContent = 'ผิด';
+    icon.textContent = '!';
+  }
+
+  detail.textContent = detailText || word || '';
+  wrapper.classList.add('visible');
+}
+
 function renderSpelling(q){
+  resetSpellingStatus();   // <--- บรรทัดใหม่
+
   const qHintEl = document.getElementById('qHint');
   qHintEl.textContent = q.item.translation;
   qHintEl.style.display = 'block';
@@ -602,6 +593,8 @@ function renderSpelling(q){
 }
 
 function renderSpellingNoTH(q){
+  resetSpellingStatus();   // <--- บรรทัดใหม่
+
   const qHintEl = document.getElementById('qHint');
   qHintEl.textContent = '';
   qHintEl.style.display = 'none';
@@ -635,49 +628,130 @@ function submitSpelling(){
   evaluateSpelling(input, correctObj, idx);
 }
 
-function revealSpelling(){
-  if(!quizCurrent) return;
+/* 👇 เพิ่มบล็อกนี้เข้าไปตรงนี้ */
+const spellingInputEl = document.getElementById('spellingInput');
+if (spellingInputEl) {
+  spellingInputEl.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();   // กันไม่ให้เกิด action อื่น
+      submitSpelling();     // เรียกฟังก์ชันเดิมของปุ่ม Submit
+    }
+  });
+}
+/* 👆 จบส่วนที่เพิ่ม */
+
+function revealSpelling() {
+  if (!quizCurrent) return;
+
   const q = ensureQuizObj(quizCurrent);
   const idx = q ? q.idx : -1;
   const word = q && q.item ? q.item.word : '';
-  document.getElementById('spellingFeedback').textContent = `เฉลย: ${word}`;
-  if(idx >= 0 && vocab[idx]){
-    vocab[idx].wrong = (vocab[idx].wrong||0) + 1;
+  const fb = document.getElementById('spellingFeedback');
+
+  let detailLine = word;
+  if (idx >= 0 && vocab[idx] && vocab[idx].translation) {
+    detailLine = `${word} (${vocab[idx].translation})`;
+  }
+
+  if (fb) fb.textContent = `เฉลย: ${detailLine}`;
+  showSpellingStatus('wrong', word, detailLine);
+
+  if (idx >= 0 && vocab[idx]) {
+    vocab[idx].wrong = (vocab[idx].wrong || 0) + 1;
     vocab[idx].lastSeen = Date.now();
     saveAll();
-    sessionWrong.push({ idx: idx, word: vocab[idx].word, correct: vocab[idx].translation });
+    sessionWrong.push({
+      idx: idx,
+      word: vocab[idx].word,
+      correct: vocab[idx].translation
+    });
     updateSessionWrong();
   }
+
   const auto = document.getElementById('autoNext').checked;
-  if(auto) setTimeout(()=> showNextQuiz(quizRandomize ? null : quizFixedMode), 900);
+  if (auto) {
+    setTimeout(
+      () => showNextQuiz(quizRandomize ? null : quizFixedMode),
+      900
+    );
+  }
 }
 
-function evaluateSpelling(input, correctObj, idx){ 
-  document.getElementById('spellingInput').disabled = true; 
-  const auto = document.getElementById('autoNext').checked; 
 
-  const correctItem = (correctObj && correctObj.item) ? correctObj.item : (typeof correctObj === 'string' ? { word: String(correctObj), translation: '' } : null);
+function evaluateSpelling(input, correctObj, idx) {
+  const inputEl = document.getElementById('spellingInput');
+  if (!inputEl) return;
+
+  inputEl.disabled = true;
+  const auto = document.getElementById('autoNext').checked;
+  const fb = document.getElementById('spellingFeedback');
+
+  // ดึงคำตอบที่ถูกต้องออกมา
+  const correctItem =
+    correctObj && correctObj.item
+      ? correctObj.item
+      : typeof correctObj === 'string'
+      ? { word: String(correctObj), translation: '' }
+      : null;
+
   const correctWord = correctItem ? (correctItem.word || '') : '';
   const correctTrans = correctItem ? (correctItem.translation || '') : '';
+
   const normalizedInput = String(input || '').trim().toLowerCase();
   const normalizedCorrect = String(correctWord || '').trim().toLowerCase();
 
-  if(normalizedInput === normalizedCorrect){ 
-    document.getElementById('spellingFeedback').textContent = `ถูกต้อง— เฉลย: ${correctTrans}`; 
-    if(idx >= 0 && vocab[idx]) { vocab[idx].correct = (vocab[idx].correct||0) + 1; }
-    quizScore++; 
-  } else { 
-    document.getElementById('spellingFeedback').textContent = `ผิด — คำที่ถูกต้อง: ${correctWord} ${correctTrans ? ('(' + correctTrans + ')') : ''}`; 
-    if(idx >= 0 && vocab[idx]) { vocab[idx].wrong = (vocab[idx].wrong||0) + 1; sessionWrong.push({ idx, word: vocab[idx].word, correct: vocab[idx].translation }); }
-  } 
-  if(idx >= 0 && vocab[idx]){ vocab[idx].lastSeen = Date.now(); }
-  saveAll(); document.getElementById('qScore').textContent = `${quizScore} / ${quizTotal}`; updateSessionWrong(); 
-  if(auto){ 
-    setTimeout(()=> { document.getElementById('spellingInput').disabled = false; showNextQuiz(quizRandomize ? null : quizFixedMode); }, 900); 
-  } else { 
-    setTimeout(()=> { document.getElementById('spellingInput').disabled = false; }, 250); 
-  } 
+  if (normalizedInput === normalizedCorrect) {
+    // ✅ ถูกต้อง
+    const detailLine = correctTrans
+      ? `${correctWord} — ${correctTrans}`
+      : correctWord;
+
+    if (fb) fb.textContent = `ถูกต้อง — ${detailLine}`;
+    showSpellingStatus('correct', correctWord, detailLine);
+
+    if (idx >= 0 && vocab[idx]) {
+      vocab[idx].correct = (vocab[idx].correct || 0) + 1;
+    }
+    quizScore++;
+  } else {
+    // ❌ ผิด
+    const detailLine = correctTrans
+      ? `${correctWord} (${correctTrans})`
+      : correctWord;
+
+    if (fb) fb.textContent = `ผิด — คำที่ถูกต้อง: ${detailLine}`;
+    showSpellingStatus('wrong', correctWord, detailLine);
+
+    if (idx >= 0 && vocab[idx]) {
+      vocab[idx].wrong = (vocab[idx].wrong || 0) + 1;
+      sessionWrong.push({
+        idx,
+        word: vocab[idx].word,
+        correct: vocab[idx].translation
+      });
+    }
+  }
+
+  if (idx >= 0 && vocab[idx]) {
+    vocab[idx].lastSeen = Date.now();
+  }
+
+  saveAll();
+  document.getElementById('qScore').textContent = `${quizScore} / ${quizTotal}`;
+  updateSessionWrong();
+
+  if (auto) {
+    setTimeout(() => {
+      inputEl.disabled = false;
+      showNextQuiz(quizRandomize ? null : quizFixedMode);
+    }, 900);
+  } else {
+    setTimeout(() => {
+      inputEl.disabled = false;
+    }, 250);
+  }
 }
+
 
 function evaluateQuiz(selected, correct, idx, el){ 
   document.querySelectorAll('#qOptions .option').forEach(o=>o.onclick = null); 
@@ -837,3 +911,7 @@ updateStatsUI();
     });
   });
 })();
+
+
+
+

@@ -280,6 +280,74 @@
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
 }
 
+/* Spelling status banner (Correct / Wrong) */
+.spelling-status {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 0.75rem;
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.spelling-status.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.spelling-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.55rem 1.1rem;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.08);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  backdrop-filter: blur(8px);
+}
+
+.spelling-status-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+}
+
+.spelling-status-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.spelling-status-detail {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+/* สีเวลาตอบถูก / ผิด */
+.spelling-status.is-correct .spelling-status-pill {
+  background: rgba(16, 185, 129, 0.09);
+  border-color: rgba(16, 185, 129, 0.7);
+}
+
+.spelling-status.is-correct .spelling-status-icon {
+  background: rgba(16, 185, 129, 0.16);
+  color: var(--success);
+}
+
+.spelling-status.is-wrong .spelling-status-pill {
+  background: rgba(239, 68, 68, 0.09);
+  border-color: rgba(239, 68, 68, 0.7);
+}
+
+.spelling-status.is-wrong .spelling-status-icon {
+  background: rgba(239, 68, 68, 0.16);
+  color: var(--danger);
+}
+
     </style>
   </head>
   <body>
@@ -650,15 +718,28 @@
               </div>
               <div class="mt-2" id="qOptions"></div>
 
-              <div
-                id="spellingArea"
-                style="
-                  display: none;
-                  width: 100%;
-                  max-width: 640px;
-                  text-align: center;
-                "
-              >
+           <div
+  id="spellingArea"
+  style="
+    display: none;
+    width: 100%;
+    max-width: 640px;
+    text-align: center;
+  "
+>
+  <!-- Status banner -->
+  <div id="spellingStatus" class="spelling-status">
+    <div class="spelling-status-pill">
+      <div id="spellingStatusIcon" class="spelling-status-icon">✓</div>
+      <div class="text-start">
+        <div id="spellingStatusTitle" class="spelling-status-title"></div>
+        <div
+          id="spellingStatusDetail"
+          class="spelling-status-detail"
+        ></div>
+      </div>
+    </div>
+  </div>
                 <div class="h6 text-muted" id="qHint"></div>
                 <div
                   class="d-flex gap-2 justify-content-center flex-wrap"
