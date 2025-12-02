@@ -125,13 +125,13 @@ function initListLottieIcons() {
     let path = null;
     switch (type) {
       case 'sound':
-        path = './lotties/sound.json';
+        path = './icon/sound.png';
         break;
       case 'edit':
-        path = './lotties/edit.json';
+        path = './icon/edit.png';
         break;
       case 'delete':
-        path = './lotties/delete.json';
+        path = './icon/delete.png';
         break;
     }
     if (!path) return;
@@ -192,17 +192,17 @@ function renderLibraryImmediate(){
           <div class="small">✅ ${it.correct||0} ❌ ${it.wrong||0}</div>
         </div>
       </div>
-      <div class="d-flex gap-2 align-items-center text-list">
-        <button class="btn btn-icon-circle icon-sound btn-sm" onclick="playENIndex(${it.idx})">
-          <span class="lottie-icon" data-lottie="sound"></span>
-        </button>
-        <button class="btn btn-icon-circle icon-edit btn-sm" onclick="editItem(${it.idx})">
-          <span class="lottie-icon" data-lottie="edit"></span>
-        </button>
-        <button class="btn btn-icon-circle icon-delete btn-sm" onclick="deleteItem(${it.idx})">
-          <span class="lottie-icon" data-lottie="delete"></span>
-        </button>
-      </div>`;
+     <div class="d-flex gap-2 align-items-center text-list">
+    <button class="btn btn-icon-circle icon-sound btn-sm" onclick="playENIndex(${it.idx})">
+      <img src="./icon/sound.png" alt="sound" class="icon-static" />
+    </button>
+    <button class="btn btn-icon-circle icon-edit btn-sm" onclick="editItem(${it.idx})">
+      <img src="./icon/edit.png" alt="edit" class="icon-static" />
+    </button>
+    <button class="btn btn-icon-circle icon-delete btn-sm" onclick="deleteItem(${it.idx})">
+      <img src="./icon/delete.png" alt="delete" class="icon-static" />
+    </button>
+  </div>`;
     list.appendChild(el);
   });
 
