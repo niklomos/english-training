@@ -109,16 +109,14 @@ document.querySelectorAll('.nav-link').forEach(t => {
 });
 
 /* ------------------------------
-  Library functions + Lottie icons
+  Library functions
 -------------------------------*/
-
-
 
 // ตัว render จริง (เรียกตรง ๆ ตอน add / import / clear)
 function renderLibraryImmediate(){
   const list = document.getElementById('list');
 
-  // destroy Lottie เก่าก่อนเคลียร์ list เพื่อลด memory / CPU leak
+  // destroy Lottie เก่าก่อนเคลียร์ list เพื่อลด memory / CPU leak (ถ้าเคยมี)
   list.querySelectorAll('.lottie-icon').forEach(icon => {
     if (icon._lottieInstance) {
       icon._lottieInstance.destroy();
@@ -149,17 +147,17 @@ function renderLibraryImmediate(){
           <div class="small">✅ ${it.correct||0} ❌ ${it.wrong||0}</div>
         </div>
       </div>
-     <div class="d-flex gap-2 align-items-center text-list">
-    <button class="btn btn-icon-circle icon-sound btn-sm" onclick="playENIndex(${it.idx})">
-      <img src="./icon/sound.png" alt="sound" class="icon-static" />
-    </button>
-    <button class="btn btn-icon-circle icon-edit btn-sm" onclick="editItem(${it.idx})">
-      <img src="./icon/edit.png" alt="edit" class="icon-static" />
-    </button>
-    <button class="btn btn-icon-circle icon-delete btn-sm" onclick="deleteItem(${it.idx})">
-      <img src="./icon/delete.png" alt="delete" class="icon-static" />
-    </button>
-  </div>`;
+      <div class="d-flex gap-2 align-items-center text-list">
+        <button class="btn btn-icon-circle icon-sound btn-sm" onclick="playENIndex(${it.idx})">
+          <img src="./icon/sound.png" alt="sound" class="icon-static" />
+        </button>
+        <button class="btn btn-icon-circle icon-edit btn-sm" onclick="editItem(${it.idx})">
+          <img src="./icon/edit.png" alt="edit" class="icon-static" />
+        </button>
+        <button class="btn btn-icon-circle icon-delete btn-sm" onclick="deleteItem(${it.idx})">
+          <img src="./icon/delete.png" alt="delete" class="icon-static" />
+        </button>
+      </div>`;
     list.appendChild(el);
   });
 
@@ -168,30 +166,67 @@ function renderLibraryImmediate(){
 // เวอร์ชัน debounce สำหรับ search (เรียกจาก oninput ใน HTML)
 window.renderLibrary = debounce(renderLibraryImmediate, 120);
 
+// helper: เช็กว่ามีคำนี้อยู่แล้วหรือยัง (เทียบเฉพาะ word, ไม่สนตัวพิมพ์เล็กใหญ่)
+function isDuplicateWord(word) {
+  const w = String(word || '').trim().toLowerCase();
+  if (!w) return false;
+  return vocab.some(v => String(v.word || '').trim().toLowerCase() === w);
+}
+
 function addWord(){
   const w = document.getElementById('inputWord').value.trim();
   const t = document.getElementById('inputTrans').value.trim();
-  if(!w || !t) return alert('กรุณากรอก Word และ Translation');
-  vocab.push({word:w, translation:t, correct:0, wrong:0, lastSeen: Date.now()});
+  if(!w || !t) {
+    alert('กรุณากรอก Word และ Translation');
+    return;
+  }
+
+  // กันคำซ้ำ
+  if (isDuplicateWord(w)) {
+    alert('มีคำนี้อยู่แล้วในคลัง: ' + w);
+    return;
+  }
+
+  vocab.push({
+    word: w,
+    translation: t,
+    correct: 0,
+    wrong: 0,
+    lastSeen: Date.now()
+  });
   document.getElementById('inputWord').value='';
   document.getElementById('inputTrans').value='';
   saveAll();
   renderLibraryImmediate();
 }
+
 function editItem(i){
   const it = vocab[i];
   const nw = prompt('แก้คำศัพท์', it.word); if(nw===null) return;
   const nt = prompt('แก้คำแปล', it.translation); if(nt===null) return;
-  it.word = nw.trim(); it.translation = nt.trim(); it.lastSeen = Date.now();
+  const trimmedW = nw.trim();
+  const trimmedT = nt.trim();
+
+  // ถ้าแก้แล้วไปชนคำอื่น
+  if (trimmedW && trimmedW.toLowerCase() !== it.word.trim().toLowerCase() && isDuplicateWord(trimmedW)) {
+    alert('มีคำนี้อยู่แล้วในคลัง: ' + trimmedW);
+    return;
+  }
+
+  it.word = trimmedW;
+  it.translation = trimmedT;
+  it.lastSeen = Date.now();
   saveAll();
   renderLibraryImmediate();
 }
+
 function deleteItem(i){
   if(!confirm('ลบคำศัพท์?')) return;
   vocab.splice(i,1);
   saveAll();
   renderLibraryImmediate();
 }
+
 function clearAll(){
   if(!confirm('ล้างทั้งหมด?')) return;
   vocab = [];
@@ -202,43 +237,115 @@ function clearAll(){
 /* ------------------------------
   Import / Export CSV
 -------------------------------*/
+
+// import คำหลายคำแบบกันคำซ้ำ
+// newItems = [{word:'...', translation:'...'}, ...]
+function importItems(newItems) {
+  if (!newItems || !newItems.length) {
+    alert('ไม่พบคำที่จะนำเข้า');
+    return;
+  }
+
+  let added = 0;
+  let duplicated = 0;
+  const dupSamples = [];
+
+  newItems.forEach(row => {
+    const w = String(row.word || '').trim();
+    const t = String(row.translation || '').trim();
+    if (!w || !t) return;
+
+    if (isDuplicateWord(w)) {
+      duplicated++;
+      if (dupSamples.length < 5) dupSamples.push(w);
+      return;
+    }
+
+    vocab.push({
+      word: w,
+      translation: t,
+      correct: 0,
+      wrong: 0,
+      lastSeen: Date.now()
+    });
+    added++;
+  });
+
+  saveAll();
+  renderLibraryImmediate();
+
+  let msg = `นำเข้าเรียบร้อย: เพิ่มใหม่ ${added} คำ`;
+  if (duplicated > 0) {
+    msg += `\nข้ามคำซ้ำ ${duplicated} คำ`;
+    if (dupSamples.length) {
+      msg += `\nตัวอย่างคำซ้ำ: ${dupSamples.join(', ')}`;
+    }
+  }
+  alert(msg);
+}
+
 function handleImportFile(e){
-  const f = e.target.files[0]; if(!f) return;
+  const f = e.target.files[0];
+  if(!f) return;
+
   Papa.parse(f, {
     header:true,
     skipEmptyLines:true,
     complete(results){
-      const rows = results.data; const items=[];
+      const rows = results.data;
+      const items = [];
       for(const r of rows){
         const W = r.Word ?? r.word ?? Object.values(r)[0];
         const T = r.Translation ?? r.translation ?? Object.values(r)[1];
         if(!W || !T) continue;
-        items.push({word:String(W).trim(), translation:String(T).trim(), correct:0, wrong:0, lastSeen: Date.now()});
+        items.push({
+          word: String(W).trim(),
+          translation: String(T).trim()
+        });
       }
-      if(!items.length) return alert('ไม่พบคำในไฟล์');
-      vocab = items;
-      saveAll();
-      alert('นำเข้าเรียบร้อย: ' + items.length + ' คำ');
-      renderLibraryImmediate();
+
+      if(!items.length) {
+        alert('ไม่พบคำในไฟล์');
+        return;
+      }
+
+      // เพิ่มแบบกันคำซ้ำ
+      importItems(items);
     },
     error(err){ alert('Import failed: '+err.message); }
   });
 }
+
 function importFromPaste(){
-  const txt = document.getElementById('pasteCsv').value.trim(); if(!txt) return alert('วาง CSV ก่อน');
-  const parsed = Papa.parse(txt, { header:true, skipEmptyLines:true }); const rows = parsed.data; const items=[];
+  const txt = document.getElementById('pasteCsv').value.trim();
+  if(!txt) {
+    alert('วาง CSV ก่อน');
+    return;
+  }
+
+  const parsed = Papa.parse(txt, { header:true, skipEmptyLines:true });
+  const rows = parsed.data;
+  const items = [];
+
   for(const r of rows){
     const W = r.Word ?? r.word ?? Object.values(r)[0];
     const T = r.Translation ?? r.translation ?? Object.values(r)[1];
     if(!W || !T) continue;
-    items.push({word:String(W).trim(), translation:String(T).trim(), correct:0, wrong:0, lastSeen: Date.now()});
+    items.push({
+      word: String(W).trim(),
+      translation: String(T).trim()
+    });
   }
-  if(!items.length) return alert('ไม่พบคำในข้อมูลที่วาง');
-  vocab = items;
-  saveAll();
-  alert('นำเข้าเรียบร้อย: ' + items.length + ' คำ');
-  renderLibraryImmediate();
+
+  if(!items.length){
+    alert('ไม่พบคำในข้อมูลที่วาง');
+    return;
+  }
+
+  // เพิ่มแบบกันคำซ้ำ
+  importItems(items);
 }
+
 function autoFixPaste(){
   const txt = document.getElementById('pasteCsv').value;
   if(!txt) return alert('วางข้อความก่อน');
@@ -252,6 +359,7 @@ function autoFixPaste(){
     alert('attempted latin1->utf8 conversion');
   }catch(e){ alert('ไม่สามารถแปลงอัตโนมัติได้'); }
 }
+
 function exportCSV(){
   if(!vocab.length) return alert('ไม่มีคำศัพท์');
   const rows = vocab.map(i=>({Word:i.word, Translation:i.translation}));
@@ -266,6 +374,7 @@ function exportCSV(){
   a.remove();
   URL.revokeObjectURL(url);
 }
+
 async function copyCSV(){
   if(!vocab.length) return alert('ไม่มีคำศัพท์');
   const rows = vocab.map(i=>({Word:i.word, Translation:i.translation}));
@@ -395,7 +504,7 @@ function stopPractice(){ document.getElementById('practiceCard').style.display =
 function practiceWeak(){ const weak = vocab.map((it,i)=>({it,i})).filter(x=> (x.it.wrong||0) >= 2).map(x=>x.i); if(!weak.length) return alert('ไม่มีคำที่ผิดบ่อย'); practiceQueue = weak; practiceIndex = 0; document.getElementById('practiceCard').style.display = 'block'; showPracticeCard(); }
 
 /* ------------------------------
-  Quiz + spelling (unchanged logic)
+  Quiz + spelling
 -------------------------------*/
 let quizQueue = [], quizScore = 0, quizTotal = 0, quizCurrent = null, sessionWrong = [], quizRandomize = false, quizFixedMode = null;
 
@@ -531,6 +640,8 @@ function renderReverse(q){
   document.getElementById('qProgress').style.width = pct + '%';
 }
 
+/* ---------- Spelling status indicator ---------- */
+
 function resetSpellingStatus() {
   const wrapper = document.getElementById('spellingStatus');
   if (!wrapper) return;
@@ -564,8 +675,10 @@ function showSpellingStatus(kind, word, detailText) {
   wrapper.classList.add('visible');
 }
 
+/* ---------- Spelling renderers ---------- */
+
 function renderSpelling(q){
-  resetSpellingStatus();   // <--- บรรทัดใหม่
+  resetSpellingStatus();
 
   const qHintEl = document.getElementById('qHint');
   qHintEl.textContent = q.item.translation;
@@ -593,7 +706,7 @@ function renderSpelling(q){
 }
 
 function renderSpellingNoTH(q){
-  resetSpellingStatus();   // <--- บรรทัดใหม่
+  resetSpellingStatus();
 
   const qHintEl = document.getElementById('qHint');
   qHintEl.textContent = '';
@@ -628,17 +741,16 @@ function submitSpelling(){
   evaluateSpelling(input, correctObj, idx);
 }
 
-/* 👇 เพิ่มบล็อกนี้เข้าไปตรงนี้ */
+// ให้กด Enter เพื่อ Submit ได้
 const spellingInputEl = document.getElementById('spellingInput');
 if (spellingInputEl) {
   spellingInputEl.addEventListener('keydown', function (e) {
     if (e.key === 'Enter') {
-      e.preventDefault();   // กันไม่ให้เกิด action อื่น
-      submitSpelling();     // เรียกฟังก์ชันเดิมของปุ่ม Submit
+      e.preventDefault();
+      submitSpelling();
     }
   });
 }
-/* 👆 จบส่วนที่เพิ่ม */
 
 function revealSpelling() {
   if (!quizCurrent) return;
@@ -677,7 +789,6 @@ function revealSpelling() {
   }
 }
 
-
 function evaluateSpelling(input, correctObj, idx) {
   const inputEl = document.getElementById('spellingInput');
   if (!inputEl) return;
@@ -686,7 +797,6 @@ function evaluateSpelling(input, correctObj, idx) {
   const auto = document.getElementById('autoNext').checked;
   const fb = document.getElementById('spellingFeedback');
 
-  // ดึงคำตอบที่ถูกต้องออกมา
   const correctItem =
     correctObj && correctObj.item
       ? correctObj.item
@@ -701,7 +811,6 @@ function evaluateSpelling(input, correctObj, idx) {
   const normalizedCorrect = String(correctWord || '').trim().toLowerCase();
 
   if (normalizedInput === normalizedCorrect) {
-    // ✅ ถูกต้อง
     const detailLine = correctTrans
       ? `${correctWord} — ${correctTrans}`
       : correctWord;
@@ -714,7 +823,6 @@ function evaluateSpelling(input, correctObj, idx) {
     }
     quizScore++;
   } else {
-    // ❌ ผิด
     const detailLine = correctTrans
       ? `${correctWord} (${correctTrans})`
       : correctWord;
@@ -751,7 +859,6 @@ function evaluateSpelling(input, correctObj, idx) {
     }, 250);
   }
 }
-
 
 function evaluateQuiz(selected, correct, idx, el){ 
   document.querySelectorAll('#qOptions .option').forEach(o=>o.onclick = null); 
@@ -848,6 +955,7 @@ function updateStatsUI(){
   document.getElementById('dWeak').textContent = vocab.filter(i=> (i.wrong||0) >= 2).length;
   renderWeakList();
 }
+
 function renderWeakList(){
   const el = document.getElementById('weakList'); el.innerHTML = '';
   const weak = vocab.map((it,i)=>({...it,i})).filter(x=> (x.wrong||0) >= 2).sort((a,b)=> (b.wrong||0) - (a.wrong||0));
@@ -859,9 +967,13 @@ function renderWeakList(){
     el.appendChild(div);
   });
 }
+
 function practiceSingle(i){ practiceQueue = [i]; practiceIndex = 0; document.getElementById('practiceCard').style.display = 'block'; showPracticeCard(); }
+
 function resetStats(){ if(!confirm('Reset stats?')) return; vocab.forEach(i=>{ i.correct=0; i.wrong=0; }); saveAll(); updateStatsUI(); alert('Reset done'); }
+
 function shuffleArray(a){ for(let i=a.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } }
+
 function escapeHtml(s){ return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
 
 /* ------------------------------
@@ -911,7 +1023,3 @@ updateStatsUI();
     });
   });
 })();
-
-
-
-
