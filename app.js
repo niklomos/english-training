@@ -498,8 +498,82 @@ function shufflePractice(){
   practiceIndex = 0;
   showPracticeCard();
 }
-function markKnown(){ const idx = parseInt(document.getElementById('practiceCard').dataset.idx || -1); if(idx < 0) return; vocab[idx].correct = (vocab[idx].correct || 0) + 1; vocab[idx].lastSeen = Date.now(); saveAll(); nextPractice(); }
-function markWrong(){ const idx = parseInt(document.getElementById('practiceCard').dataset.idx || -1); if(idx < 0) return; vocab[idx].wrong = (vocab[idx].wrong || 0) + 1; vocab[idx].lastSeen = Date.now(); saveAll(); nextPractice(); }
+function markKnown(){
+  const idx = parseInt(document.getElementById('practiceCard').dataset.idx || -1);
+  if(idx < 0) return;
+  vocab[idx].correct = (vocab[idx].correct || 0) + 1;
+  vocab[idx].lastSeen = Date.now();
+  saveAll();
+  nextPractice();
+}
+
+function markWrong(){
+  const idx = parseInt(document.getElementById('practiceCard').dataset.idx || -1);
+  if (idx < 0) return;
+
+  // กด Show อัตโนมัติ -> แสดงคำแปล
+  revealPractice();
+
+  // นับสถิติ wrong ตามปกติ
+  vocab[idx].wrong = (vocab[idx].wrong || 0) + 1;
+  vocab[idx].lastSeen = Date.now();
+  saveAll();
+
+  // รอให้เราเห็นคำตอบแป๊บหนึ่งแล้วค่อย Next ไปข้อถัดไป
+  setTimeout(() => {
+    nextPractice();
+  }, 800); // ปรับเวลาได้ตามชอบ เช่น 500, 1000 ms
+}
+
+/* ===== Keyboard shortcuts: Left = Known, Right = Wrong ===== */
+document.addEventListener('keydown', function (e) {
+  // ถ้ากำลังโฟกัสอยู่ใน input / textarea ไม่ต้องใช้ shortcut
+  const ae = document.activeElement;
+  if (
+    ae &&
+    (ae.tagName === 'INPUT' ||
+      ae.tagName === 'TEXTAREA' ||
+      ae.isContentEditable)
+  ) {
+    return;
+  }
+
+  // ซ้าย = Known
+  if (e.key === 'ArrowLeft') {
+    e.preventDefault();
+    markKnown();
+    return;
+  }
+
+  // ขวา = Wrong
+  if (e.key === 'ArrowRight') {
+    e.preventDefault();
+    markWrong();
+    return;
+  }
+
+  // Shift = เล่นเสียง EN (ตามหน้า)
+  if (e.key === 'Shift') {
+    e.preventDefault();
+
+    const practiceCard = document.getElementById('practiceCard');
+    const quizCard = document.getElementById('quizCard');
+
+    // ถ้าอยู่หน้า Practice (การ์ดเปิดอยู่)
+    if (practiceCard && practiceCard.style.display !== 'none') {
+      playEN('practice');   // อ่านคำใน practice
+      return;
+    }
+
+    // ถ้าอยู่หน้า Quiz (การ์ดเปิดอยู่)
+    if (quizCard && quizCard.style.display !== 'none') {
+      playEN('quiz');       // อ่านคำใน quiz
+      return;
+    }
+  }
+});
+
+
 function stopPractice(){ document.getElementById('practiceCard').style.display = 'none'; }
 function practiceWeak(){ const weak = vocab.map((it,i)=>({it,i})).filter(x=> (x.it.wrong||0) >= 2).map(x=>x.i); if(!weak.length) return alert('ไม่มีคำที่ผิดบ่อย'); practiceQueue = weak; practiceIndex = 0; document.getElementById('practiceCard').style.display = 'block'; showPracticeCard(); }
 
