@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Vocabulary Trainer </title>
+    <title>Vocabulary Trainer</title>
     <link rel="icon" type="image/png" href="./images/logo.png" />
 
     <link
@@ -246,108 +246,186 @@
         transform: translateY(-1px) scale(1.04);
       }
 
-      /* ===== Icon buttons (Lottie) ===== */
-.btn-icon-circle {
-  width: 40px;
-  height: 40px;
-  padding: 0;
-  border-radius: 999px;
-  border: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
+      /* ===== Icon buttons ===== */
+      .btn-icon-circle {
+        width: 40px;
+        height: 40px;
+        padding: 0;
+        border-radius: 999px;
+        border: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+      }
 
-/* กล่องที่เอาไว้ใส่ Lottie */
-.btn-icon-circle .lottie-icon {
-  width: 35px;
-  height: 35px;
-}
+      .btn-icon-circle .lottie-icon {
+        width: 35px;
+        height: 35px;
+      }
 
+      .icon-static {
+        width: 26px;
+        height: 26px;
+        pointer-events: none;
+      }
 
+      .dark .btn-icon-circle {
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+      }
 
-/* background แต่ละปุ่มให้ใกล้ ๆ รูปที่ส่งมา */
-.icon-static {
-  width: 26px;      /* ปรับขนาดได้ตามชอบ */
-  height: 26px;
-  pointer-events: none; /* กันไม่ให้รับคลิกแทนปุ่ม */
-}
+      /* Spelling status banner (Correct / Wrong) */
+      .spelling-status {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 0.75rem;
+        opacity: 0;
+        transform: translateY(-4px);
+        pointer-events: none;
+        transition: opacity 0.18s ease, transform 0.18s ease;
+      }
 
+      .spelling-status.visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
 
-/* dark mode ปรับเงานิดหน่อย */
-.dark .btn-icon-circle {
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
-}
+      .spelling-status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.55rem 1.1rem;
+        border-radius: 999px;
+        background: rgba(148, 163, 184, 0.08);
+        border: 1px solid rgba(148, 163, 184, 0.25);
+        backdrop-filter: blur(8px);
+      }
 
-/* Spelling status banner (Correct / Wrong) */
-.spelling-status {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 0.75rem;
-  opacity: 0;
-  transform: translateY(-4px);
-  pointer-events: none;
-  transition: opacity 0.18s ease, transform 0.18s ease;
-}
+      .spelling-status-icon {
+        width: 26px;
+        height: 26px;
+        border-radius: 999px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+      }
 
-.spelling-status.visible {
-  opacity: 1;
-  transform: translateY(0);
-}
+      .spelling-status-title {
+        font-weight: 600;
+        font-size: 0.9rem;
+      }
 
-.spelling-status-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.55rem 1.1rem;
-  border-radius: 999px;
-  background: rgba(148, 163, 184, 0.08);
-  border: 1px solid rgba(148, 163, 184, 0.25);
-  backdrop-filter: blur(8px);
-}
+      .spelling-status-detail {
+        font-size: 0.8rem;
+        color: var(--muted);
+      }
 
-.spelling-status-icon {
-  width: 26px;
-  height: 26px;
-  border-radius: 999px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1rem;
-}
+      .spelling-status.is-correct .spelling-status-pill {
+        background: rgba(16, 185, 129, 0.09);
+        border-color: rgba(16, 185, 129, 0.7);
+      }
 
-.spelling-status-title {
-  font-weight: 600;
-  font-size: 0.9rem;
-}
+      .spelling-status.is-correct .spelling-status-icon {
+        background: rgba(16, 185, 129, 0.16);
+        color: var(--success);
+      }
 
-.spelling-status-detail {
-  font-size: 0.8rem;
-  color: var(--muted);
-}
+      .spelling-status.is-wrong .spelling-status-pill {
+        background: rgba(239, 68, 68, 0.09);
+        border-color: rgba(239, 68, 68, 0.7);
+      }
 
-/* สีเวลาตอบถูก / ผิด */
-.spelling-status.is-correct .spelling-status-pill {
-  background: rgba(16, 185, 129, 0.09);
-  border-color: rgba(16, 185, 129, 0.7);
-}
+      .spelling-status.is-wrong .spelling-status-icon {
+        background: rgba(239, 68, 68, 0.16);
+        color: var(--danger);
+      }
 
-.spelling-status.is-correct .spelling-status-icon {
-  background: rgba(16, 185, 129, 0.16);
-  color: var(--success);
-}
+      /* ========= สวิตช์ Auto Sound สไตล์เว็บใหญ่ ๆ ========= */
+      .sound-toggle {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        cursor: pointer;
+        user-select: none;
+        font-size: 0.78rem;
+      }
 
-.spelling-status.is-wrong .spelling-status-pill {
-  background: rgba(239, 68, 68, 0.09);
-  border-color: rgba(239, 68, 68, 0.7);
-}
+      .sound-toggle input {
+        display: none;
+      }
 
-.spelling-status.is-wrong .spelling-status-icon {
-  background: rgba(239, 68, 68, 0.16);
-  color: var(--danger);
-}
+      .sound-toggle-track {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        padding: 3px 8px;
+        border-radius: 999px;
+        background: rgba(15, 23, 42, 0.04);
+        border: 1px solid rgba(148, 163, 184, 0.5);
+        gap: 0.45rem;
+        transition: background 0.2s ease, border-color 0.2s ease,
+          color 0.2s ease;
+      }
 
+      .sound-toggle-thumb {
+        width: 20px;
+        height: 20px;
+        border-radius: 999px;
+        background: #ffffff;
+        box-shadow: 0 2px 6px rgba(15, 23, 42, 0.25);
+        transform: translateX(0);
+        transition: transform 0.2s ease, background 0.2s ease;
+      }
+
+      .sound-toggle-label {
+        white-space: nowrap;
+        opacity: 0.7;
+        transition: opacity 0.2s ease;
+      }
+
+      .sound-toggle-label.on {
+        font-weight: 600;
+      }
+
+      .sound-toggle input:checked + .sound-toggle-track {
+        background: linear-gradient(135deg, var(--primary), var(--accent));
+        border-color: transparent;
+        color: #ffffff;
+      }
+
+      .sound-toggle input:checked + .sound-toggle-track .sound-toggle-thumb {
+        transform: translateX(18px);
+      }
+
+      .sound-toggle input:checked
+        + .sound-toggle-track
+        .sound-toggle-label.on {
+        opacity: 1;
+      }
+
+      .sound-toggle input:checked
+        + .sound-toggle-track
+        .sound-toggle-label.off {
+        opacity: 0.3;
+      }
+
+      .sound-toggle input:not(:checked)
+        + .sound-toggle-track
+        .sound-toggle-label.on {
+        opacity: 0.4;
+      }
+
+      .sound-toggle input:not(:checked)
+        + .sound-toggle-track
+        .sound-toggle-label.off {
+        opacity: 0.95;
+      }
+
+      .dark .sound-toggle-track {
+        background: rgba(15, 23, 42, 0.7);
+        border-color: rgba(148, 163, 184, 0.7);
+      }
     </style>
   </head>
   <body>
@@ -453,7 +531,6 @@
                 <option value="weak">Weak</option>
                 <option value="mastered">Mastered</option>
               </select>
-
             </div>
 
             <div
@@ -580,6 +657,23 @@
           <button class="btn btn-outline-secondary" onclick="stopPractice()">
             Stop
           </button>
+
+          <!-- สวิตช์ Auto Sound สำหรับ Practice -->
+          <div class="ms-auto d-flex align-items-center">
+            <label class="sound-toggle mb-0">
+              <input
+                type="checkbox"
+                id="autoSoundPracticeToggle"
+                checked
+                onchange="toggleAutoSoundPractice(this.checked)"
+              />
+              <span class="sound-toggle-track">
+                <span class="sound-toggle-thumb"></span>
+                <span class="sound-toggle-label on">Auto 🔊</span>
+                <span class="sound-toggle-label off">Muted</span>
+              </span>
+            </label>
+          </div>
         </div>
 
         <div class="row g-3">
@@ -681,10 +775,10 @@
           <label class="d-flex align-items-center gap-2 mb-0"
             >Mode:
             <select id="qMode" class="form-select" style="width: 240px">
-              <option value="multiple">EN → TH </option>
-              <option value="reverse">TH → EN </option>
-              <option value="spelling">Spelling </option>
-              <option value="spelling-no-thai">Spelling (NO TH )</option>
+              <option value="multiple">EN → TH</option>
+              <option value="reverse">TH → EN</option>
+              <option value="spelling">Spelling</option>
+              <option value="spelling-no-thai">Spelling (NO TH)</option>
             </select>
           </label>
           <label class="d-flex align-items-center gap-2 mb-0"
@@ -694,9 +788,26 @@
           <button class="btn btn-primary" onclick="startQuiz()">
             Start Quiz
           </button>
-          <label class="d-flex align-items-center gap-2 mb-0"
-            ><input id="autoNext" type="checkbox" checked /> Auto next</label
-          >
+          <label class="d-flex align-items-center gap-2 mb-0">
+            <input id="autoNext" type="checkbox" checked /> Auto next
+          </label>
+
+          <!-- สวิตช์ Auto Sound สำหรับ Quiz -->
+          <div class="ms-auto d-flex align-items-center">
+            <label class="sound-toggle mb-0">
+              <input
+                type="checkbox"
+                id="autoSoundQuizToggle"
+                checked
+                onchange="toggleAutoSoundQuiz(this.checked)"
+              />
+              <span class="sound-toggle-track">
+                <span class="sound-toggle-thumb"></span>
+                <span class="sound-toggle-label on">Auto 🔊</span>
+                <span class="sound-toggle-label off">Muted</span>
+              </span>
+            </label>
+          </div>
         </div>
 
         <div class="row g-3">
@@ -718,28 +829,36 @@
               </div>
               <div class="mt-2" id="qOptions"></div>
 
-           <div
-  id="spellingArea"
-  style="
-    display: none;
-    width: 100%;
-    max-width: 640px;
-    text-align: center;
-  "
->
-  <!-- Status banner -->
-  <div id="spellingStatus" class="spelling-status">
-    <div class="spelling-status-pill">
-      <div id="spellingStatusIcon" class="spelling-status-icon">✓</div>
-      <div class="text-start">
-        <div id="spellingStatusTitle" class="spelling-status-title"></div>
-        <div
-          id="spellingStatusDetail"
-          class="spelling-status-detail"
-        ></div>
-      </div>
-    </div>
-  </div>
+              <div
+                id="spellingArea"
+                style="
+                  display: none;
+                  width: 100%;
+                  max-width: 640px;
+                  text-align: center;
+                "
+              >
+                <!-- Status banner -->
+                <div id="spellingStatus" class="spelling-status">
+                  <div class="spelling-status-pill">
+                    <div
+                      id="spellingStatusIcon"
+                      class="spelling-status-icon"
+                    >
+                      ✓
+                    </div>
+                    <div class="text-start">
+                      <div
+                        id="spellingStatusTitle"
+                        class="spelling-status-title"
+                      ></div>
+                      <div
+                        id="spellingStatusDetail"
+                        class="spelling-status-detail"
+                      ></div>
+                    </div>
+                  </div>
+                </div>
                 <div class="h6 text-muted" id="qHint"></div>
                 <div
                   class="d-flex gap-2 justify-content-center flex-wrap"
@@ -762,7 +881,10 @@
                     Reveal
                   </button>
                 </div>
-                <div id="spellingFeedback" class="small text-muted mt-2"></div>
+                <div
+                  id="spellingFeedback"
+                  class="small text-muted mt-2"
+                ></div>
               </div>
 
               <div class="mt-3">
