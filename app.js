@@ -619,14 +619,14 @@ document.addEventListener('keydown', function (e) {
   // ซ้าย = Known
   if (e.key === 'ArrowLeft') {
     e.preventDefault();
-    markKnown();
+    markWrong();
     return;
   }
 
   // ขวา = Wrong
   if (e.key === 'ArrowRight') {
     e.preventDefault();
-    markWrong();
+    markKnown();
     return;
   }
 
