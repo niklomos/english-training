@@ -602,16 +602,17 @@ function markWrong() {
   }, 800); // ปรับเวลาได้ตามชอบ เช่น 500, 1000 ms
 }
 
-/* ===== Keyboard shortcuts: Left = Known, Right = Wrong, Shift = play sound ===== */
+/* ===== Keyboard shortcuts: Left = Known, Right = Wrong, Shift = sound ===== */
 document.addEventListener('keydown', function (e) {
-  // ถ้ากำลังโฟกัสอยู่ใน input / textarea ไม่ต้องใช้ shortcut
   const ae = document.activeElement;
-  if (
+  const isTextField =
     ae &&
     (ae.tagName === 'INPUT' ||
       ae.tagName === 'TEXTAREA' ||
-      ae.isContentEditable)
-  ) {
+      ae.isContentEditable);
+
+  // ถ้าโฟกัสอยู่ใน input/textarea: ปิด shortcut ทั้งหมด ยกเว้นปุ่ม Shift (ใช้เล่นเสียงได้)
+  if (isTextField && e.key !== 'Shift') {
     return;
   }
 
@@ -629,37 +630,35 @@ document.addEventListener('keydown', function (e) {
     return;
   }
 
-  // Shift = เล่นเสียง EN (ตามหน้า)
+  // Shift = เล่นเสียง EN (ตามหน้า) แม้โฟกัสอยู่ในช่องพิมพ์ก็ได้
   if (e.key === 'Shift') {
     e.preventDefault();
 
     const practiceCard = document.getElementById('practiceCard');
     const quizCard = document.getElementById('quizCard');
 
-    // เช็ก "มองเห็นได้จริง" ด้วย offsetParent กันกรณี parent ถูก display:none
     const practiceVisible =
       practiceCard && practiceCard.offsetParent !== null;
     const quizVisible = quizCard && quizCard.offsetParent !== null;
 
     if (practiceVisible && !quizVisible) {
-      // อยู่หน้า Practice
       playEN('practice');
       return;
     }
 
     if (quizVisible && !practiceVisible) {
-      // อยู่หน้า Quiz
       playEN('quiz');
       return;
     }
 
-    // ถ้าดันมองเห็นทั้งคู่ (เผื่ออนาคต) ให้ priority กับ Quiz
+    // ถ้าเผื่ออนาคตดันเห็นทั้งคู่ ให้ priority กับ Quiz
     if (quizVisible) {
       playEN('quiz');
       return;
     }
   }
 });
+
 
 function stopPractice() {
   document.getElementById('practiceCard').style.display = 'none';
